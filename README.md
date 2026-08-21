@@ -10,9 +10,10 @@ development capability boundary.
 
 ## Project status
 
-**Local AMD64 and QEMU ARM64 candidates built — both passed the shared runtime,
-native-module, Compose and Caddy HTTPS gateway acceptance. No container image
-has been published, released or deployed.**
+**Local AMD64, QEMU ARM64 and native GitHub ARM64 candidates built — the local
+images passed the shared runtime, native-module, Compose and Caddy HTTPS gateway
+acceptance; the native ARM candidate passed its build/runtime/bundle gates. No
+container image has been published, released or deployed.**
 
 The corrected amd64 candidate records DSH image ID `sha256:5a7c4f1a…` and OCI
 config digest `sha256:5e82d2be…`; its runtime smoke
@@ -23,8 +24,10 @@ local appliance run used the exported Caddy root CA (not `-k`) and proved
 The ARM candidate records image ID `sha256:bec5923e…` and config digest
 `sha256:66089779…`; its QEMU appliance also proved the same trusted-CA
 401/200, bad-Host 421, bad-Origin 403, healthy services and no published 3080.
-GitHub native ARM64 execution and real disconnected production-ARM acceptance
-remain open gates.
+GitHub [native ARM run 32499388906](https://github.com/dff652/deepseek-harness-container/actions/runs/32499388906)
+then produced manifest `sha256:4712317a…` and config `sha256:e8473358…`; the
+downloaded artifact was independently rehashed and matched its candidate lock.
+Real disconnected production-ARM acceptance remains open.
 
 This repository was created to separate the OCI/Compose release lifecycle from
 the configuration-only plugin packages in the sibling
@@ -37,12 +40,12 @@ The candidate targets this exact tuple:
 
 | Component | Candidate pin | State |
 |---|---:|---|
-| DeepSeek Harness | `0.1.1-rc.1` | AMD64 native and ARM64 QEMU local candidates passed; native/production ARM pending |
+| DeepSeek Harness | `0.1.1-rc.1` | AMD64 native, ARM64 QEMU and GitHub native ARM candidates passed; production ARM pending |
 | DSH tag/commit | `dsh-v0.1.1-rc.1` / `528c682e061696f5a160f363f236ecbf53cbd006` | Verified upstream identity |
 | Node.js | `24.19.0` | Locked in runtime and base image |
 | pnpm | `11.7.0` | Locked with Corepack integrity |
 | Caddy | `2.11.4` | OCI index plus AMD64/ARM64 child digests locked |
-| Production target | `linux/arm64`, glibc | current QEMU candidate passed; native and production ARM pending |
+| Production target | `linux/arm64`, glibc | QEMU and GitHub native candidates passed; production ARM pending |
 | Local test target | `linux/amd64`, glibc | native runtime and Compose/Caddy acceptance passed |
 
 No `latest`, branch head, machine path, private IP, credential or unresolved
@@ -173,6 +176,7 @@ runtime/
   pnpm-workspace.yaml
 policy/
   image-lock.json
+  native-arm64-lock.json
 scripts/
   prepare-local-builder.sh
   build-candidate.sh
@@ -191,8 +195,9 @@ assets/readme/
 ```
 
 The build workflow lives at `.github/workflows/build-arm64.yml`. Repository
-policy records the rebuilt QEMU output as candidate-only. Each new ARM64 or
-AMD64 bundle generates an environment-specific candidate lock;
+policy records both the rebuilt QEMU output and verified native GitHub output
+as candidate-only. Each new ARM64 or AMD64 bundle generates an
+environment-specific candidate lock;
 SBOM and separate provenance fields remain null. Every artifact is explicitly
 marked candidate-only and is not the complete release bundle described below.
 

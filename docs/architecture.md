@@ -219,8 +219,8 @@ ARM host capacity is known and tested.
    CA/gateway acceptance. The rebuilt QEMU ARM64 image passed disconnected
    native-module/Web smoke and the same local CA/gateway checks; no registry
    publication yet.
-3. **Native ARM candidate:** GitHub native build, offline bundle, target
-   acceptance and rollback evidence.
+3. **Native ARM candidate:** GitHub native build/runtime and downloaded-bundle
+   verification completed; production target and rollback acceptance remain.
 4. **Public candidate distribution:** architecture-specific Docker Hub tags
    and a verified AMD64/ARM64 manifest, always marked candidate-only.
 5. **Formal multi-architecture release:** sign and publish formal tags only

@@ -80,6 +80,14 @@ The first workflow should:
 - upload a Docker archive only on an explicitly permitted manual/tag path;
 - keep GHCR publication, signing and release as later owner-authorized steps.
 
+Native run [32499388906](https://github.com/dff652/deepseek-harness-container/actions/runs/32499388906)
+completed these candidate gates for source commit `1ee0788…`. After download,
+all bundle SHA-256 entries passed; the tar index resolved exactly one
+`linux/arm64` manifest (`sha256:4712317a…`), whose blob and referenced config
+(`sha256:e8473358…`) were independently rehashed. The committed
+`policy/native-arm64-lock.json` preserves that environment-specific evidence.
+This is native build/runtime evidence, not production-host acceptance.
+
 The 14 GiB disk is an acceptance constraint. The workflow must record image,
 cache and archive sizes and fail clearly if the dependency closure plus export
 does not fit. A larger runner is not silently selected to hide that failure.

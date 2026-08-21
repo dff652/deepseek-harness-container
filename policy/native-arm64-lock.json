@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "status": "native-github-candidate-built-not-released",
+  "target": "linux/arm64",
+  "application": {
+    "dshVersion": "0.1.1-rc.1",
+    "dshTag": "dsh-v0.1.1-rc.1",
+    "dshCommit": "528c682e061696f5a160f363f236ecbf53cbd006",
+    "npmIntegrity": "sha512-HVauMT0F7MWUctkxzBcu5PMFc8j0lm0kX+4IbcUsA7Oh+/xv7xhigEDP0SaSOM/kR48U/BldHbZru116DcZz0w==",
+    "nodeVersion": "24.19.0",
+    "pnpmVersion": "11.7.0"
+  },
+  "images": {
+    "dockerfileFrontend": "docker.io/docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e",
+    "nodeBaseIndex": "docker.io/library/node:24.19.0-bookworm-slim@sha256:3638d9a6fe4030bd716be989438248074489337ba3275657f93595428be4fc03",
+    "nodeBaseArm64": "docker.io/library/node:24.19.0-bookworm-slim@sha256:c133efe216ffb6e785ed9a8be55a29fcb86775e8008ae0a9f0ed6af4f175bb03",
+    "caddyIndex": "docker.io/library/caddy:2.11.4@sha256:df7f1c2fb114453b951de51a98efc010db1655a92c2e86be6706714e2417a78d",
+    "caddyArm64": "docker.io/library/caddy:2.11.4@sha256:1172d4213087d3fc30bafc7ff2c2896180eb0c41ff7f75f315568fb36cabdcba",
+    "buildkit": "docker.io/moby/buildkit:v0.29.0@sha256:0039c1d47e8748b5afea56f4e85f14febaf34452bd99d9552d2daa82262b5cc5"
+  },
+  "output": {
+    "buildEnvironment": "github-actions/ubuntu-24.04-arm-native-buildx",
+    "builtAt": "2026-08-21T15:47:20Z",
+    "sourceCommit": "1ee0788ecf07fe9392baa0067ba888624b250c69",
+    "githubRunId": "32499388906",
+    "imageId": "sha256:e8473358a72a8287f5e61e90ec0242d7c78575567bc806720cb6a4106c1edeb6",
+    "manifestDigest": "sha256:4712317ad3082b8d5e14d3c236bac12a52029a580789d59b1bbc46f161f03fef",
+    "configDigest": "sha256:e8473358a72a8287f5e61e90ec0242d7c78575567bc806720cb6a4106c1edeb6",
+    "dshArchiveSha256": "cbebd57b9ac1be278e706bc6f1050d473e7b902cdc798948703171b5e748ba2c",
+    "caddyImageId": "sha256:6b08c1b9858ca9a7d99c1da13c3695081e0e604c6cf214ca26a7ce0e2c4fd9b4",
+    "caddyArchiveSha256": "f7d71b25adb1a943c125dd2d4a6fa88e60912354b0908a44f030f928eec9cad8",
+    "sbomSha256": null,
+    "provenanceSha256": null
+  }
+}

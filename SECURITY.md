@@ -2,11 +2,11 @@
 
 ## Current status
 
-This repository has a locally accepted AMD64 regression candidate and a
-rebuilt QEMU ARM64 candidate, but no current native or production ARM acceptance,
-container image publication or production deployment. It does not accept production
-credentials. Security reports must not assume that either candidate Compose
-is a deployable release.
+This repository has a locally accepted AMD64 regression candidate plus rebuilt
+QEMU and verified GitHub-native ARM64 candidates, but no production ARM
+acceptance, container image publication or production deployment. It does not
+accept production credentials. Security reports must not assume that a
+candidate configuration is a deployable release.
 
 ## Trust boundaries
 
