@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "status": "qemu-candidate-built-not-released",
+  "target": "linux/arm64",
+  "application": {
+    "dshVersion": "0.1.1-rc.1",
+    "dshTag": "dsh-v0.1.1-rc.1",
+    "dshCommit": "528c682e061696f5a160f363f236ecbf53cbd006",
+    "npmIntegrity": "sha512-HVauMT0F7MWUctkxzBcu5PMFc8j0lm0kX+4IbcUsA7Oh+/xv7xhigEDP0SaSOM/kR48U/BldHbZru116DcZz0w==",
+    "nodeVersion": "24.19.0",
+    "pnpmVersion": "11.7.0"
+  },
+  "images": {
+    "dockerfileFrontend": "docker.io/docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e",
+    "nodeBaseIndex": "docker.io/library/node:24.19.0-bookworm-slim@sha256:3638d9a6fe4030bd716be989438248074489337ba3275657f93595428be4fc03",
+    "nodeBaseArm64": "docker.io/library/node:24.19.0-bookworm-slim@sha256:c133efe216ffb6e785ed9a8be55a29fcb86775e8008ae0a9f0ed6af4f175bb03",
+    "caddyIndex": "docker.io/library/caddy:2.11.4@sha256:df7f1c2fb114453b951de51a98efc010db1655a92c2e86be6706714e2417a78d",
+    "caddyArm64": "docker.io/library/caddy:2.11.4@sha256:1172d4213087d3fc30bafc7ff2c2896180eb0c41ff7f75f315568fb36cabdcba",
+    "buildkit": "docker.io/moby/buildkit:v0.29.0@sha256:0039c1d47e8748b5afea56f4e85f14febaf34452bd99d9552d2daa82262b5cc5",
+    "binfmt": "docker.io/tonistiigi/binfmt:qemu-v10.0.4@sha256:8f58e6214f4cc9dc83ce8f5acad1ece508eb6b20e696a8c1e9f274481982c541",
+    "arm64Probe": "docker.io/library/alpine:3.22@sha256:2c9d26f410d032d5b1525aa8a873e238b05b90c4ae8618743d4311f0cc827e37"
+  },
+  "output": {
+    "buildEnvironment": "linux/amd64-buildx-qemu-aarch64",
+    "builtAt": "2026-08-21T15:33:37Z",
+    "imageId": "sha256:bec5923ed0193a3ac4568d14084a9933ea04253832b7a19ceb281042a017a70d",
+    "manifestDigest": "sha256:bec5923ed0193a3ac4568d14084a9933ea04253832b7a19ceb281042a017a70d",
+    "configDigest": "sha256:66089779479cbeec6290d34862dfebb476af3b49a8e1a1543f825d534361218b",
+    "dshArchiveSha256": "81e2ac8ec00a70390d1b380fb1df8b03cc48b8dffad273106fc90c701da0f34f",
+    "caddyImageId": "sha256:1172d4213087d3fc30bafc7ff2c2896180eb0c41ff7f75f315568fb36cabdcba",
+    "caddyArchiveSha256": "6dfe88045b4559afe2d0e34fe9373b4892bd48bce18649cef6de525547609c0d",
+    "sbomSha256": null,
+    "provenanceSha256": null
+  }
+}

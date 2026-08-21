@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="390" viewBox="0 0 1200 390" role="img" aria-labelledby="title desc">
+  <title id="title">DeepSeek Harness Container</title>
+  <desc id="desc">Offline-first DeepSeek Harness appliance for AMD64 and ARM64. LAN traffic enters through Caddy HTTPS on port 443 and reaches DSH only on container loopback port 3080.</desc>
+
+  <rect width="1200" height="390" rx="24" fill="#0b0d0e"/>
+  <path d="M56 42H1144M56 348H1144" stroke="#34383a" stroke-width="1"/>
+
+  <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">
+    <text x="60" y="72" fill="#aeb4b6" font-size="17" letter-spacing="2">OFFLINE-FIRST / OCI APPLIANCE / IP-ONLY HTTPS</text>
+    <text x="60" y="148" fill="#f4f1e8" font-family="DejaVu Sans, Arial, sans-serif" font-size="58" font-weight="700">DeepSeek Harness</text>
+    <text x="60" y="207" fill="#f4f1e8" font-family="DejaVu Sans, Arial, sans-serif" font-size="58" font-weight="300">Container</text>
+    <text x="63" y="258" fill="#aeb4b6" font-family="DejaVu Sans, Arial, sans-serif" font-size="22">Dual-architecture runtime. No raw DSH port.</text>
+
+    <g transform="translate(62 298)">
+      <rect width="190" height="34" rx="17" fill="#171a1b" stroke="#b7f34a"/>
+      <circle cx="21" cy="17" r="5" fill="#b7f34a"/>
+      <text x="38" y="23" fill="#f4f1e8" font-size="17">LINUX / AMD64</text>
+      <rect x="206" width="190" height="34" rx="17" fill="#171a1b" stroke="#ffb454"/>
+      <circle cx="227" cy="17" r="5" fill="#ffb454"/>
+      <text x="244" y="23" fill="#f4f1e8" font-size="17">LINUX / ARM64</text>
+    </g>
+  </g>
+
+  <g transform="translate(694 65)" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">
+    <text x="0" y="0" fill="#aeb4b6" font-size="17" letter-spacing="2">SEALED REQUEST PATH</text>
+
+    <g transform="translate(0 32)">
+      <rect width="410" height="76" rx="14" fill="#121516" stroke="#4b5153"/>
+      <text x="24" y="32" fill="#f4f1e8" font-size="22" font-weight="700">MANAGED LAN</text>
+      <text x="24" y="57" fill="#aeb4b6" font-size="18">https://HOST_IP:443</text>
+      <rect x="314" y="19" width="72" height="38" rx="19" fill="#b7f34a"/>
+      <text x="336" y="45" fill="#0b0d0e" font-size="19" font-weight="700">443</text>
+    </g>
+
+    <path d="M205 108V134" stroke="#b7f34a" stroke-width="2"/>
+    <path d="M197 126L205 134L213 126" fill="none" stroke="#b7f34a" stroke-width="2"/>
+
+    <g transform="translate(0 134)">
+      <rect width="410" height="76" rx="14" fill="#121516" stroke="#4b5153"/>
+      <text x="24" y="32" fill="#f4f1e8" font-size="22" font-weight="700">CADDY GATE</text>
+      <text x="24" y="57" fill="#aeb4b6" font-size="18">local CA · Basic Auth · Host/Origin</text>
+      <path d="M354 23V53M340 38H368" stroke="#b7f34a" stroke-width="2"/>
+    </g>
+
+    <path d="M205 210V236" stroke="#b7f34a" stroke-width="2"/>
+    <path d="M197 228L205 236L213 228" fill="none" stroke="#b7f34a" stroke-width="2"/>
+
+    <g transform="translate(0 236)">
+      <rect width="410" height="76" rx="14" fill="#121516" stroke="#4b5153"/>
+      <text x="24" y="32" fill="#f4f1e8" font-size="22" font-weight="700">DSH RUNTIME</text>
+      <text x="24" y="57" fill="#aeb4b6" font-size="18">127.0.0.1:3080 · uid 10001</text>
+      <rect x="321" y="21" width="65" height="34" rx="6" fill="none" stroke="#ffb454"/>
+      <path d="M335 38H372" stroke="#ffb454" stroke-width="2" stroke-dasharray="5 5"/>
+    </g>
+  </g>
+
+  <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="16">
+    <text x="60" y="374" fill="#6f7678">PINNED INPUTS · OFFLINE LOAD · EXPLICIT CAPABILITIES</text>
+    <text x="1140" y="374" fill="#6f7678" text-anchor="end">PORT 3080 / NOT PUBLISHED</text>
+  </g>
+</svg>

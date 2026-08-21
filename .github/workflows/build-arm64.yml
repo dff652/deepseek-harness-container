@@ -1,0 +1,143 @@
+name: build-arm64-candidate
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: arm64-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  native-arm64:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 45
+    env:
+      IMAGE_TAG: local/dsh:0.1.1-rc.1-arm64
+      CADDY_REF: caddy:2.11.4@sha256:1172d4213087d3fc30bafc7ff2c2896180eb0c41ff7f75f315568fb36cabdcba
+    steps:
+      - name: Check out source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4
+        with:
+          driver-opts: image=moby/buildkit:v0.29.0@sha256:0039c1d47e8748b5afea56f4e85f14febaf34452bd99d9552d2daa82262b5cc5
+
+      - name: Run static contracts
+        run: |
+          bash tests/compose-contract.sh
+          bash tests/negative-exposure.sh
+          bash tests/native-workflow-contract.sh
+          bash tests/caddy-volume-init.sh
+
+      - name: Record and enforce native-runner disk preflight
+        run: |
+          test "$(uname -m)" = aarch64
+          df -h / | tee "${RUNNER_TEMP}/disk-before.txt"
+          docker system df | tee "${RUNNER_TEMP}/docker-system-df-before.txt"
+          available_kib=$(df --output=avail / | tail -n 1 | tr -d ' ')
+          test "$available_kib" -ge 6291456
+
+      - name: Build native ARM64 Docker archive
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7
+        with:
+          context: .
+          platforms: linux/arm64
+          target: runtime
+          build-args: |
+            TARGETPLATFORM=linux/arm64
+            NODE_BASE_REF=node:24.19.0-bookworm-slim@sha256:c133efe216ffb6e785ed9a8be55a29fcb86775e8008ae0a9f0ed6af4f175bb03
+          tags: ${{ env.IMAGE_TAG }}
+          outputs: type=docker,dest=${{ runner.temp }}/dsh-0.1.1-rc.1-arm64.tar
+          provenance: false
+          sbom: false
+
+      - name: Load and smoke the ARM64 image
+        run: |
+          docker load --input "${RUNNER_TEMP}/dsh-0.1.1-rc.1-arm64.tar"
+          test "$(docker image inspect "$IMAGE_TAG" --format '{{.Architecture}}')" = arm64
+          docker run --rm "$IMAGE_TAG" --version
+          bash tests/arm64-runtime.sh "$IMAGE_TAG"
+          docker image inspect "$IMAGE_TAG" > "${RUNNER_TEMP}/dsh-image-inspect.json"
+          docker version > "${RUNNER_TEMP}/docker-version.txt"
+          docker buildx version > "${RUNNER_TEMP}/buildx-version.txt"
+          docker buildx inspect > "${RUNNER_TEMP}/builder-inspect.txt"
+          du -h "${RUNNER_TEMP}/dsh-0.1.1-rc.1-arm64.tar" | tee "${RUNNER_TEMP}/archive-size.txt"
+          df -h / | tee "${RUNNER_TEMP}/disk-after.txt"
+
+      - name: Assemble manual-download bundle
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          install -d -m 0755 "${RUNNER_TEMP}/bundle"
+          docker pull --platform linux/arm64 "$CADDY_REF"
+          test "$(docker image inspect "$CADDY_REF" --format '{{.Architecture}}')" = arm64
+          docker image inspect "$CADDY_REF" > "${RUNNER_TEMP}/caddy-image-inspect.json"
+          docker image save --output "${RUNNER_TEMP}/bundle/caddy-2.11.4-arm64.tar" "$CADDY_REF"
+          cp "${RUNNER_TEMP}/dsh-0.1.1-rc.1-arm64.tar" "${RUNNER_TEMP}/bundle/"
+          cp compose.yaml Caddyfile .env.example "${RUNNER_TEMP}/bundle/"
+          cp "${RUNNER_TEMP}/dsh-image-inspect.json" \
+            "${RUNNER_TEMP}/caddy-image-inspect.json" \
+            "${RUNNER_TEMP}/docker-version.txt" \
+            "${RUNNER_TEMP}/buildx-version.txt" \
+            "${RUNNER_TEMP}/builder-inspect.txt" \
+            "${RUNNER_TEMP}/archive-size.txt" \
+            "${RUNNER_TEMP}/disk-before.txt" \
+            "${RUNNER_TEMP}/disk-after.txt" \
+            "${RUNNER_TEMP}/docker-system-df-before.txt" \
+            "${RUNNER_TEMP}/bundle/"
+          built_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          dsh_image_id=$(docker image inspect "$IMAGE_TAG" --format '{{.Id}}')
+          caddy_image_id=$(docker image inspect "$CADDY_REF" --format '{{.Id}}')
+          dsh_archive_sha256=$(sha256sum "${RUNNER_TEMP}/bundle/dsh-0.1.1-rc.1-arm64.tar" | cut -d' ' -f1)
+          caddy_archive_sha256=$(sha256sum "${RUNNER_TEMP}/bundle/caddy-2.11.4-arm64.tar" | cut -d' ' -f1)
+          config_path=$(tar -xOf "${RUNNER_TEMP}/bundle/dsh-0.1.1-rc.1-arm64.tar" manifest.json | jq -er '.[0].Config')
+          case "$config_path" in blobs/sha256/*) ;; *) echo "unexpected OCI config path: $config_path" >&2; exit 1;; esac
+          config_digest="sha256:${config_path##*/}"
+          test "$(tar -xOf "${RUNNER_TEMP}/bundle/dsh-0.1.1-rc.1-arm64.tar" "$config_path" | sha256sum | cut -d' ' -f1)" = \
+            "${config_digest#sha256:}"
+          jq \
+            --arg builtAt "$built_at" \
+            --arg sourceCommit "${{ github.sha }}" \
+            --arg githubRunId "${{ github.run_id }}" \
+            --arg imageId "$dsh_image_id" \
+            --arg configDigest "$config_digest" \
+            --arg dshArchiveSha256 "$dsh_archive_sha256" \
+            --arg caddyImageId "$caddy_image_id" \
+            --arg caddyArchiveSha256 "$caddy_archive_sha256" \
+            'del(.images.binfmt, .images.arm64Probe)
+             | .status = "native-github-candidate-built-not-released"
+             | .output = {
+                 buildEnvironment: "github-actions/ubuntu-24.04-arm-native-buildx",
+                 builtAt: $builtAt,
+                 sourceCommit: $sourceCommit,
+                 githubRunId: $githubRunId,
+                 imageId: $imageId,
+                 manifestDigest: $imageId,
+                 configDigest: $configDigest,
+                 dshArchiveSha256: $dshArchiveSha256,
+                 caddyImageId: $caddyImageId,
+                 caddyArchiveSha256: $caddyArchiveSha256,
+                 sbomSha256: null,
+                 provenanceSha256: null
+               }' \
+            policy/image-lock.json > "${RUNNER_TEMP}/bundle/native-candidate-lock.json"
+          printf '%s\n' \
+            'CANDIDATE ONLY: no SBOM, provenance, signature or production ARM acceptance is included.' \
+            > "${RUNNER_TEMP}/bundle/CANDIDATE-NOT-RELEASE.txt"
+          docker system df > "${RUNNER_TEMP}/bundle/docker-system-df.txt"
+          (
+            cd "${RUNNER_TEMP}/bundle"
+            sha256sum * > SHA256SUMS
+          )
+          tar -C "${RUNNER_TEMP}" -cf "${RUNNER_TEMP}/dsh-container-arm64.tar" bundle
+
+      - name: Upload manual candidate
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          path: ${{ runner.temp }}/dsh-container-arm64.tar
+          retention-days: 14

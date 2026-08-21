@@ -1,0 +1,48 @@
+{
+	admin off
+	auto_https disable_redirects
+	# Literal-IP clients such as curl may omit SNI. Select the managed IP
+	# certificate instead of failing the TLS handshake before HTTP routing.
+	default_sni {$DSH_LAN_IP}
+	# The container must not try to mutate its own read-only OS trust store.
+	# Operators export /data/caddy/pki/authorities/local/root.crt to clients.
+	skip_install_trust
+}
+
+# The address is an environment-provided LAN IP, not a public DNS name. Caddy
+# issues a deployment-local certificate with tls internal; clients must import
+# the matching local CA instead of ignoring a browser warning.
+https://{$DSH_LAN_IP} {
+	tls internal
+
+	# Keep this route deliberately ordered. These external trust checks run
+	# before any upstream header adaptation and before Basic Auth.
+	route {
+		@cross_site header Sec-Fetch-Site cross-site
+		respond @cross_site "cross-site request denied" 403
+
+		# An absent Origin is allowed for non-browser/legacy requests. If an
+		# Origin is supplied, it must be exactly the external HTTPS authority.
+		@bad_origin expression `{http.request.header.Origin} != "" && {http.request.header.Origin} != "https://{$DSH_LAN_IP}"`
+		respond @bad_origin "origin mismatch" 403
+
+		basic_auth {
+			{$DSH_CADDY_USERNAME} {$DSH_CADDY_PASSWORD_HASH}
+		}
+
+		reverse_proxy 127.0.0.1:3080 {
+			# These rewrites are reached only after the external gate above and
+			# are the loopback adapter for DSH's own trusted-host policy.
+			header_up Host 127.0.0.1:3080
+			header_up -Origin
+			header_up -Sec-Fetch-Site
+		}
+	}
+}
+
+# A site address containing the approved IP becomes Caddy's outer Host
+# matcher. Requests with any other Host never enter that route, so this
+# catch-all must reject them explicitly instead of relying on an inner matcher.
+https:// {
+	respond "unapproved Host" 421
+}

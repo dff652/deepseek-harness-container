@@ -1,0 +1,114 @@
+name: dsh-container
+
+services:
+  caddy-init:
+    # The official image ships /data and /config as root:root 0755. Prepare
+    # only Caddy's two application subdirectories, then exit before either
+    # long-running service starts.
+    image: caddy:2.11.4@sha256:1172d4213087d3fc30bafc7ff2c2896180eb0c41ff7f75f315568fb36cabdcba
+    pull_policy: never
+    platform: linux/arm64
+    network_mode: none
+    user: "0:0"
+    entrypoint: ["/bin/sh", "-eu", "-c"]
+    command:
+      - >-
+        mkdir -p /data/caddy /config/caddy &&
+        chown 1000:1000 /data/caddy /config/caddy
+    read_only: true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+    security_opt:
+      - no-new-privileges:true
+    volumes:
+      - caddy-data:/data
+      - caddy-config:/config
+    restart: "no"
+
+  dsh:
+    # The image is loaded from the offline bundle. Keep the versioned local
+    # reference in deployment.env; pull_policy prevents an air-gapped host
+    # from resolving a registry tag by accident.
+    image: ${DSH_IMAGE:?set DSH_IMAGE to the exact offline DSH image reference}
+    pull_policy: never
+    platform: linux/arm64
+    command: ["web", "--host", "127.0.0.1", "--port", "3080", "--no-open"]
+    # The runtime tree and DSH home are built for this exact identity. Prepare
+    # the host workspace for 10001:10001; do not override the container user.
+    user: "10001:10001"
+    init: true
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=256m
+    environment:
+      DSH_HOME: /var/lib/dsh
+      HOME: /var/lib/dsh
+      NODE_ENV: production
+    volumes:
+      - dsh-home:/var/lib/dsh
+      # This must be one deployment-approved workspace, never a host parent
+      # directory such as /, /home, or the Docker data root.
+      - ${DSH_WORKSPACE:?set DSH_WORKSPACE to one approved absolute workspace}:/workspace:rw
+    ports:
+      # Caddy owns this shared network namespace; DSH does not publish 3080.
+      - "${DSH_LAN_IP:?set DSH_LAN_IP}:443:443/tcp"
+    healthcheck:
+      # Root 2xx is a transport readiness check only; DSH has no assumed
+      # undocumented /health endpoint.
+      test:
+        - CMD
+        - node
+        - -e
+        - >-
+          fetch('http://127.0.0.1:3080/').then((r) =>
+          process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))
+      interval: 10s
+      timeout: 5s
+      start_period: 20s
+      retries: 6
+    restart: unless-stopped
+
+  caddy:
+    # Docker Hub's immutable multi-platform index for Caddy 2.11.4. The
+    # linux/arm64 child manifest is selected by platform above and recorded in
+    # the release image-lock during bundle creation.
+    image: caddy:2.11.4@sha256:1172d4213087d3fc30bafc7ff2c2896180eb0c41ff7f75f315568fb36cabdcba
+    pull_policy: never
+    platform: linux/arm64
+    network_mode: service:dsh
+    depends_on:
+      caddy-init:
+        condition: service_completed_successfully
+      dsh:
+        condition: service_healthy
+    user: "1000:1000"
+    init: true
+    read_only: true
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=64m
+    environment:
+      DSH_LAN_IP: ${DSH_LAN_IP:?set DSH_LAN_IP}
+      DSH_CADDY_USERNAME: ${DSH_CADDY_USERNAME:?set DSH_CADDY_USERNAME}
+      DSH_CADDY_PASSWORD_HASH: ${DSH_CADDY_PASSWORD_HASH:?set bcrypt password hash}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    restart: unless-stopped
+
+volumes:
+  dsh-home:
+  caddy-data:
+  caddy-config:

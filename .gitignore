@@ -1,0 +1,15 @@
+.env
+node_modules/
+dist/
+images/
+artifacts/
+*.tar
+*.tar.gz
+*.log
+coverage/
+.tmp/
+
+# Deployment-owned data and credentials
+data/
+secrets/
+certs/private/
