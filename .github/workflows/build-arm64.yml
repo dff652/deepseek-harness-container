@@ -99,11 +99,21 @@ jobs:
           config_digest="sha256:${config_path##*/}"
           test "$(tar -xOf "${RUNNER_TEMP}/bundle/dsh-0.1.1-rc.1-arm64.tar" "$config_path" | sha256sum | cut -d' ' -f1)" = \
             "${config_digest#sha256:}"
+          manifest_digest=$(tar -xOf "${RUNNER_TEMP}/bundle/dsh-0.1.1-rc.1-arm64.tar" index.json | jq -er '
+            [.manifests[] | select(.platform.os == "linux" and .platform.architecture == "arm64")]
+            | if length == 1 then .[0].digest else error("expected exactly one Linux ARM64 manifest") end
+          ')
+          manifest_path="blobs/sha256/${manifest_digest#sha256:}"
+          test "$(tar -xOf "${RUNNER_TEMP}/bundle/dsh-0.1.1-rc.1-arm64.tar" "$manifest_path" | sha256sum | cut -d' ' -f1)" = \
+            "${manifest_digest#sha256:}"
+          test "$(tar -xOf "${RUNNER_TEMP}/bundle/dsh-0.1.1-rc.1-arm64.tar" "$manifest_path" | jq -er '.config.digest')" = \
+            "$config_digest"
           jq \
             --arg builtAt "$built_at" \
             --arg sourceCommit "${{ github.sha }}" \
             --arg githubRunId "${{ github.run_id }}" \
             --arg imageId "$dsh_image_id" \
+            --arg manifestDigest "$manifest_digest" \
             --arg configDigest "$config_digest" \
             --arg dshArchiveSha256 "$dsh_archive_sha256" \
             --arg caddyImageId "$caddy_image_id" \
@@ -116,7 +126,7 @@ jobs:
                  sourceCommit: $sourceCommit,
                  githubRunId: $githubRunId,
                  imageId: $imageId,
-                 manifestDigest: $imageId,
+                 manifestDigest: $manifestDigest,
                  configDigest: $configDigest,
                  dshArchiveSha256: $dshArchiveSha256,
                  caddyImageId: $caddyImageId,

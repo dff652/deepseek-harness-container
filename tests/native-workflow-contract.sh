@@ -22,6 +22,10 @@ grep -Fq 'github-actions/ubuntu-24.04-arm-native-buildx' "$workflow" || fail "na
 grep -Fq "config_path=\$(tar -xOf" "$workflow" || fail "native OCI config digest is not extracted from the archive"
 # shellcheck disable=SC2016 # Inspect the literal jq variable in the workflow.
 grep -Fq 'configDigest: $configDigest' "$workflow" || fail "native lock does not record the verified config digest"
+grep -Fq "manifest_digest=\$(tar -xOf" "$workflow" || fail "native OCI manifest digest is not extracted from the archive index"
+grep -Fq 'expected exactly one Linux ARM64 manifest' "$workflow" || fail "native archive platform selection is ambiguous"
+# shellcheck disable=SC2016 # Inspect the literal jq variable in the workflow.
+grep -Fq 'manifestDigest: $manifestDigest' "$workflow" || fail "native lock does not record the verified manifest digest"
 # shellcheck disable=SC2016 # Inspect literal jq variable references.
 grep -Fq 'dshArchiveSha256: $dshArchiveSha256' "$workflow" || fail "native DSH archive hash missing"
 # shellcheck disable=SC2016 # Inspect literal jq variable references.
