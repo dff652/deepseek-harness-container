@@ -20,15 +20,15 @@
   },
   "output": {
     "buildEnvironment": "github-actions/ubuntu-24.04-arm-native-buildx",
-    "builtAt": "2026-08-21T15:47:20Z",
-    "sourceCommit": "1ee0788ecf07fe9392baa0067ba888624b250c69",
-    "githubRunId": "32499388906",
-    "imageId": "sha256:e8473358a72a8287f5e61e90ec0242d7c78575567bc806720cb6a4106c1edeb6",
-    "manifestDigest": "sha256:4712317ad3082b8d5e14d3c236bac12a52029a580789d59b1bbc46f161f03fef",
-    "configDigest": "sha256:e8473358a72a8287f5e61e90ec0242d7c78575567bc806720cb6a4106c1edeb6",
-    "dshArchiveSha256": "cbebd57b9ac1be278e706bc6f1050d473e7b902cdc798948703171b5e748ba2c",
+    "builtAt": "2026-08-22T05:00:48Z",
+    "sourceCommit": "84a8e5db20fb10d81ab718a90d15ba4c02980d06",
+    "githubRunId": "32553165653",
+    "imageId": "sha256:90145b53292efb79659584a360f801f6c8519a7ca63ccbfdd1359bc979f3fe75",
+    "manifestDigest": "sha256:716a9e62975f81d93c86d6a9f156b075c215f956291ae9f6fb10585c9ba9e5ba",
+    "configDigest": "sha256:90145b53292efb79659584a360f801f6c8519a7ca63ccbfdd1359bc979f3fe75",
+    "dshArchiveSha256": "4166803a2e8bc2da62f1919f71f7a8446035bf43ba6a1e27018ea9ca0f3ddd23",
     "caddyImageId": "sha256:6b08c1b9858ca9a7d99c1da13c3695081e0e604c6cf214ca26a7ce0e2c4fd9b4",
-    "caddyArchiveSha256": "f7d71b25adb1a943c125dd2d4a6fa88e60912354b0908a44f030f928eec9cad8",
+    "caddyArchiveSha256": "c9d167f703cc299838ce55521cb7b0af1c7d7e56ee1d5acffdace8831387dd7f",
     "sbomSha256": null,
     "provenanceSha256": null
   }

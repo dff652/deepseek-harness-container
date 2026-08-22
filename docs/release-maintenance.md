@@ -129,6 +129,12 @@ changing the JSON severity list cannot weaken that invariant.
 
 ### Current publication hold (2026-08-22)
 
+Hardened native ARM64 run
+[32553165653](https://github.com/dff652/deepseek-harness-container/actions/runs/32553165653)
+passed build, runtime, native-module and bundle-hash gates for source commit
+`84a8e5d…`. Its candidate lock still records null SBOM/provenance, so the run
+does not satisfy or bypass the publication policy.
+
 The hardened local AMD64 runtime passed the disconnected DSH/native-module
 smoke and its final filesystem no longer exposes npm, npx, Corepack, pnpm or
 Yarn. Against Grype DB built

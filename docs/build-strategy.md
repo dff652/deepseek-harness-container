@@ -80,13 +80,16 @@ The first workflow should:
 - upload a Docker archive only on an explicitly permitted manual/tag path;
 - keep GHCR publication, signing and release as later owner-authorized steps.
 
-Native run [32499388906](https://github.com/dff652/deepseek-harness-container/actions/runs/32499388906)
-completed these candidate gates for source commit `1ee0788…`. After download,
-all bundle SHA-256 entries passed; the tar index resolved exactly one
-`linux/arm64` manifest (`sha256:4712317a…`), whose blob and referenced config
-(`sha256:e8473358…`) were independently rehashed. The committed
+Native run [32553165653](https://github.com/dff652/deepseek-harness-container/actions/runs/32553165653)
+completed these candidate gates for hardened source commit `84a8e5d…`. After
+download, all bundle SHA-256 entries passed; the outer bundle hash was
+`475cabe72feeecdf10ec5b7bafd035d8a772181ecb2faf575189963864600064`.
+The tar index resolved exactly one `linux/arm64` manifest
+(`sha256:716a9e62…`), whose blob and referenced config (`sha256:90145b53…`)
+were independently rehashed. The committed
 `policy/native-arm64-lock.json` preserves that environment-specific evidence.
-This is native build/runtime evidence, not production-host acceptance.
+Its SBOM/provenance fields remain null, so this is native build/runtime evidence,
+not supply-chain approval or production-host acceptance.
 
 The 14 GiB disk is an acceptance constraint. The workflow must record image,
 cache and archive sizes and fail clearly if the dependency closure plus export
@@ -115,8 +118,8 @@ shared entrypoint and network policy changed, the earlier QEMU output was
 superseded; the replacement candidate now records image `sha256:bec5923e…`,
 config `sha256:66089779…` and passes the network-disabled ARM64 module/Web
 smoke plus the trusted-CA 401/200, bad-Host 421, bad-Origin 403 and no-3080
-Compose/Caddy checks. Native GitHub and production ARM acceptance remain
-pending.
+Compose/Caddy checks. The refreshed hardened native GitHub ARM64 run also
+passed; production ARM acceptance remains pending.
 
 ## GHCR and offline artifacts
 

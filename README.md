@@ -15,12 +15,14 @@ images passed the shared runtime, native-module, Compose and Caddy HTTPS gateway
 acceptance; the native ARM candidate passed its build/runtime/bundle gates. No
 container image has been published, released or deployed.**
 
-Those recorded candidates predate the current runtime hardening and remain
-historical evidence. The hardened AMD64 worktree image has passed its
-network-disabled runtime regression and its final filesystem no longer exposes
-npm, npx, Corepack, pnpm or Yarn, but a fresh strict Syft/Grype review still reports unapproved
-High/Critical matches in the pinned Node base and Caddy image. The Docker Hub
-workflow therefore remains fail-closed; there is not yet a publishable image.
+The older local candidates remain historical evidence. The hardened AMD64 and
+QEMU ARM64 worktree images passed their network-disabled runtime regressions,
+and the refreshed GitHub-native ARM64 candidate passed the same production
+runtime boundary. Their final filesystems no longer expose npm, npx, Corepack,
+pnpm or Yarn. A fresh strict Syft/Grype review of the AMD64 appliance still
+reports unapproved High/Critical matches in the pinned Node base and Caddy
+image. The Docker Hub workflow therefore remains fail-closed; there is not yet
+a publishable image.
 
 The corrected amd64 candidate records DSH image ID `sha256:5a7c4f1a…` and OCI
 config digest `sha256:5e82d2be…`; its runtime smoke
@@ -31,10 +33,11 @@ local appliance run used the exported Caddy root CA (not `-k`) and proved
 The ARM candidate records image ID `sha256:bec5923e…` and config digest
 `sha256:66089779…`; its QEMU appliance also proved the same trusted-CA
 401/200, bad-Host 421, bad-Origin 403, healthy services and no published 3080.
-GitHub [native ARM run 32499388906](https://github.com/dff652/deepseek-harness-container/actions/runs/32499388906)
-then produced manifest `sha256:4712317a…` and config `sha256:e8473358…`; the
-downloaded artifact was independently rehashed and matched its candidate lock.
-Real disconnected production-ARM acceptance remains open.
+GitHub [native ARM run 32553165653](https://github.com/dff652/deepseek-harness-container/actions/runs/32553165653)
+then rebuilt hardened source commit `84a8e5d…`, producing manifest
+`sha256:716a9e62…` and config `sha256:90145b53…`. Every downloaded bundle hash
+passed and the generated candidate lock matched the run. Real disconnected
+production-ARM acceptance remains open.
 
 This repository was created to separate the OCI/Compose release lifecycle from
 the configuration-only plugin packages in the sibling
@@ -227,8 +230,9 @@ assets/readme/
 The build workflow lives at `.github/workflows/build-arm64.yml`. Repository
 policy records both the rebuilt QEMU output and verified native GitHub output
 as candidate-only. Each new ARM64 or AMD64 bundle generates an
-environment-specific candidate lock. The older local/native locks still have
-null SBOM and provenance fields and are now superseded by the runtime hardening.
+environment-specific candidate lock. The older local/QEMU lock is superseded
+by runtime hardening; `native-arm64-lock.json` records the refreshed hardened
+native run but deliberately retains null SBOM/provenance fields.
 The Docker Hub workflow generates separately hashed Syft/CycloneDX SBOMs,
 Grype reports, license-policy results and BuildKit metadata for future
 candidates; these are candidate evidence, not signed registry attestations.
