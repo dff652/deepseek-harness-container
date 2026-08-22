@@ -7,6 +7,7 @@ readonly BUILDER_NAME='dsh-arm64-qemu'
 readonly BUILDKIT_REF='moby/buildkit:v0.29.0@sha256:0039c1d47e8748b5afea56f4e85f14febaf34452bd99d9552d2daa82262b5cc5'
 readonly IMAGE_TAG='local/dsh:0.1.1-rc.1-amd64'
 readonly NODE_BASE_REF='node:24.19.0-bookworm-slim@sha256:65932751ed4073ed02f5c04e494e4b2572a891b7dbea0568a863dc80341bf848'
+readonly NODE_RUNTIME_REF='gcr.io/distroless/nodejs24-debian13@sha256:579735ae8373ff1ab6c4aa251480fd17ae6ec1b7f83b1bfc76bf6003d0fb242b'
 readonly CADDY_REF='caddy:2.11.4@sha256:98eb57d882ccd5213d1688764db10c1ca2c58a1ca3a6717a3411ad798f7a423a'
 readonly ARTIFACT_ROOT="$REPO_ROOT/artifacts"
 
@@ -27,6 +28,7 @@ docker buildx build \
   --target runtime \
   --build-arg TARGETPLATFORM=linux/amd64 \
   --build-arg "NODE_BASE_REF=$NODE_BASE_REF" \
+  --build-arg "NODE_RUNTIME_REF=$NODE_RUNTIME_REF" \
   --tag "$IMAGE_TAG" \
   --metadata-file "$ARTIFACT_DIR/dsh-build-metadata.json" \
   --load \
@@ -66,6 +68,7 @@ jq \
   --arg caddyArchiveSha256 "$caddy_archive_sha256" \
   'del(
       .images.nodeBaseArm64,
+      .images.nodeRuntimeArm64,
       .images.caddyArm64,
       .images.binfmt,
       .images.arm64Probe
@@ -73,6 +76,7 @@ jq \
    | .status = "local-amd64-candidate-built-not-released"
    | .target = "linux/amd64"
    | .images.nodeBaseAmd64 = "docker.io/library/node:24.19.0-bookworm-slim@sha256:65932751ed4073ed02f5c04e494e4b2572a891b7dbea0568a863dc80341bf848"
+   | .images.nodeRuntimeAmd64 = "gcr.io/distroless/nodejs24-debian13@sha256:579735ae8373ff1ab6c4aa251480fd17ae6ec1b7f83b1bfc76bf6003d0fb242b"
    | .images.caddyAmd64 = "docker.io/library/caddy:2.11.4@sha256:98eb57d882ccd5213d1688764db10c1ca2c58a1ca3a6717a3411ad798f7a423a"
    | .output = {
        buildEnvironment: "local-linux-amd64-native-buildx",

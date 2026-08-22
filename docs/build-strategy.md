@@ -113,13 +113,16 @@ node-pty, Landlock and Sharp. The amd64 Compose override then passed trusted-CA
 
 This is a local regression target. It validates the shared container and
 gateway contract faster than QEMU, but it is not ARM64 build, kernel, cold-boot
-or production evidence and is not a multi-architecture release. After the
-shared entrypoint and network policy changed, the earlier QEMU output was
-superseded; the replacement candidate now records image `sha256:bec5923e…`,
-config `sha256:66089779…` and passes the network-disabled ARM64 module/Web
-smoke plus the trusted-CA 401/200, bad-Host 421, bad-Origin 403 and no-3080
-Compose/Caddy checks. The refreshed hardened native GitHub ARM64 run also
-passed; production ARM acceptance remains pending.
+or production evidence and is not a multi-architecture release. The latest
+remediation candidate keeps Bookworm only as a build stage and uses exact
+Distroless Node 24 runtime children. AMD64-native and ARM64-QEMU images passed
+the network-disabled module/Web, read-only-root, shell-absence and UID 10001
+checks. The new QEMU image records image `sha256:16cd5261…` and config
+`sha256:a6cb08c0…`; a same-tool scan reduced DSH High/Critical matches from 24
+to 4 on both architectures. The earlier trusted-CA Compose/Caddy acceptance
+and hardened native GitHub ARM64 run remain historical evidence and must be
+rerun for this exact source before release. Production ARM acceptance remains
+pending.
 
 ## GHCR and offline artifacts
 
@@ -177,6 +180,8 @@ digest and the bundle's own `SHA256SUMS` after download.
 ## Upstream references
 
 - [DSH rc.1 root package requirements](https://raw.githubusercontent.com/deepseek-ai/deepseek-harness/dsh-v0.1.1-rc.1/package.json)
+- [Google Distroless supported images and security-update model](https://github.com/GoogleContainerTools/distroless)
+- [Distroless Node.js runtime contents](https://github.com/GoogleContainerTools/distroless/blob/main/nodejs/README.md)
 - [Docker multi-platform builds](https://docs.docker.com/build/building/multi-platform/)
 - [GitHub private-repository ARM64 announcement](https://github.blog/changelog/2026-01-29-arm64-standard-runners-are-now-available-in-private-repositories/)
 - [GitHub-hosted runner specifications](https://docs.github.com/en/actions/reference/runners/github-hosted-runners)

@@ -19,6 +19,11 @@ grep -Fq 'LOCAL_TAG: local/dsh:${{ github.sha }}-${{ matrix.architecture }}' "$w
 grep -Fq 'image-tag.txt' "$workflow" || fail 'publication must load the packaged local tag'
 # shellcheck disable=SC2016 # Inspect the literal GitHub expression.
 grep -Fq 'TARGETPLATFORM=${{ matrix.platform }}' "$workflow" || fail 'explicit target platform missing'
+# shellcheck disable=SC2016 # Inspect the literal GitHub expression.
+grep -Fq 'NODE_RUNTIME_REF=${{ matrix.node_runtime_ref }}' "$workflow" || fail 'pinned production runtime build argument missing'
+grep -Fq -- '--node-runtime-digest' "$workflow" || fail 'production runtime digest policy gate missing'
+grep -Fq 'gcr.io/distroless/nodejs24-debian13@sha256:579735ae8373ff1ab6c4aa251480fd17ae6ec1b7f83b1bfc76bf6003d0fb242b' "$workflow" || fail 'amd64 distroless child digest missing'
+grep -Fq 'gcr.io/distroless/nodejs24-debian13@sha256:8f5b4fe36a991614a46469e4ec06f65838a2bc22d61f560aac9d40ae62e9ac5a' "$workflow" || fail 'arm64 distroless child digest missing'
 grep -Fq 'tests/amd64-runtime.sh' "$workflow" || fail 'amd64 runtime smoke missing'
 grep -Fq 'tests/arm64-runtime.sh' "$workflow" || fail 'arm64 runtime smoke missing'
 grep -Fq 'gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e' "$workflow" || fail 'pinned history secret scan missing'

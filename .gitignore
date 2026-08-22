@@ -8,6 +8,8 @@ artifacts/
 *.log
 coverage/
 .tmp/
+__pycache__/
+*.pyc
 
 # Deployment-owned data and credentials
 data/

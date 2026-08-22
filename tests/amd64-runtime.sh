@@ -17,25 +17,30 @@ trap cleanup EXIT
 
 test "$(docker image inspect "$IMAGE_REF" --format '{{.Os}}/{{.Architecture}}')" = \
   'linux/amd64'
+test "$(docker run --rm --network none --entrypoint /nodejs/bin/node "$IMAGE_REF" --version)" = 'v24.19.0'
 test "$(docker run --rm --network none "$IMAGE_REF" --version)" = '0.1.1-rc.1'
-docker run --rm --network none --entrypoint sh "$IMAGE_REF" -c '
-  for command in npm npx pnpm pnpx corepack yarn yarnpkg; do
-    if command -v "$command" >/dev/null 2>&1; then
-      echo "unexpected production package manager: $command" >&2
-      exit 1
-    fi
-  done
-  for path in /opt/corepack /opt/yarn-v1.22.22 /pnpm \
-    /usr/local/lib/node_modules/corepack /usr/local/lib/node_modules/npm; do
-    test ! -e "$path" && test ! -L "$path"
-  done
-'
 docker run --rm \
   --network none \
   --tmpfs /tmp:rw,noexec,nosuid,nodev,size=64m \
-  --entrypoint node \
+  --entrypoint /nodejs/bin/node \
   "$IMAGE_REF" \
   -e '
+    const fs = require("node:fs");
+    const forbidden = [
+      "/bin/sh", "/bin/bash", "/usr/bin/npm", "/usr/bin/npx",
+      "/usr/local/bin/npm", "/usr/local/bin/npx", "/opt/corepack",
+      "/opt/yarn-v1.22.22", "/pnpm", "/usr/local/lib/node_modules/corepack",
+      "/usr/local/lib/node_modules/npm",
+    ];
+    for (const path of forbidden) {
+      if (fs.existsSync(path)) throw new Error(`unexpected production path: ${path}`);
+    }
+    for (const path of ["/var/lib/dsh", "/workspace"]) {
+      const stat = fs.statSync(path);
+      if (stat.uid !== 10001 || stat.gid !== 10001) {
+        throw new Error(`unexpected ownership on ${path}: ${stat.uid}:${stat.gid}`);
+      }
+    }
     const root = "/opt/dsh/runtime/node_modules/.pnpm/";
     const modules = [
       ["koffi", root + "koffi@3.1.6/node_modules/koffi"],
@@ -47,6 +52,7 @@ docker run --rm \
       const value = require(path);
       if (!value) throw new Error(`${name} did not load`);
     }
+    if (process.getuid() !== 10001) throw new Error(`unexpected uid: ${process.getuid()}`);
   '
 
 docker run --detach \
@@ -61,7 +67,7 @@ docker run --detach \
   "$IMAGE_REF" >/dev/null
 
 for attempt in $(seq 1 30); do
-  if docker exec "$CONTAINER_NAME" node -e \
+  if docker exec "$CONTAINER_NAME" /nodejs/bin/node -e \
     "fetch('http://127.0.0.1:3080/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"; then
     break
   fi
@@ -72,6 +78,6 @@ for attempt in $(seq 1 30); do
   sleep 1
 done
 
-test "$(docker exec "$CONTAINER_NAME" id -u)" = '10001'
+test "$(docker exec "$CONTAINER_NAME" /nodejs/bin/node -p 'process.getuid()')" = '10001'
 test -z "$(docker port "$CONTAINER_NAME")"
-printf 'PASS: amd64 DSH runtime, native modules, no package manager, loopback Web and non-root boundary\n'
+printf 'PASS: amd64 distroless DSH runtime, native modules, no shell/package manager, loopback Web and non-root boundary\n'

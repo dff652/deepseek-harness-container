@@ -5,6 +5,7 @@
 # multi-platform tag during the build.
 ARG TARGETPLATFORM=linux/arm64
 ARG NODE_BASE_REF=node:24.19.0-bookworm-slim@sha256:c133efe216ffb6e785ed9a8be55a29fcb86775e8008ae0a9f0ed6af4f175bb03
+ARG NODE_RUNTIME_REF=gcr.io/distroless/nodejs24-debian13@sha256:8f5b4fe36a991614a46469e4ec06f65838a2bc22d61f560aac9d40ae62e9ac5a
 FROM --platform=${TARGETPLATFORM} ${NODE_BASE_REF} AS base
 
 ENV COREPACK_HOME=/opt/corepack \
@@ -20,6 +21,12 @@ WORKDIR /opt/dsh/runtime
 COPY runtime/package.json ./package.json
 RUN corepack enable \
  && test "$(pnpm --version)" = "11.7.0"
+
+# Empty named volumes inherit ownership from these image paths on first use.
+# Create them in a shell-capable stage, then copy only the directories into the
+# shell-less production stage.
+RUN install --directory --owner=10001 --group=10001 \
+      /dsh-runtime-root/var/lib/dsh /dsh-runtime-root/workspace
 
 FROM base AS dependency-store
 
@@ -39,26 +46,20 @@ COPY runtime/pnpm-lock.yaml runtime/pnpm-workspace.yaml ./
 # Debian compiler fallback.
 RUN pnpm --config.trust-lockfile=true install --prod --frozen-lockfile --offline
 
-FROM base AS runtime
+FROM --platform=${TARGETPLATFORM} ${NODE_RUNTIME_REF} AS runtime
 
 LABEL org.opencontainers.image.title="DeepSeek Harness runtime" \
       org.opencontainers.image.version="0.1.1-rc.1" \
       org.opencontainers.image.vendor="deepseek-harness-container" \
       org.opencontainers.image.source="https://github.com/deepseek-ai/deepseek-harness"
 
-# Package managers are build-time tools. The development target retains them;
-# the production target removes their install surface and dependency closure.
-RUN groupadd --gid 10001 dsh \
- && useradd --uid 10001 --gid 10001 --home-dir /var/lib/dsh --create-home \
-      --shell /usr/sbin/nologin dsh \
- && install --directory --owner=10001 --group=10001 /workspace \
- && rm -rf /opt/corepack /opt/yarn-v1.22.22 /pnpm \
-      /usr/local/lib/node_modules/corepack \
-      /usr/local/lib/node_modules/npm \
- && rm -f /usr/local/bin/corepack /usr/local/bin/npm /usr/local/bin/npx \
-      /usr/local/bin/pnpm /usr/local/bin/pnpx /usr/local/bin/yarn \
-      /usr/local/bin/yarnpkg
+# The production image copies only the installed application into a pinned
+# shell-less Node runtime. Build/package managers and Debian essential tooling
+# remain in the build and development stages and never enter this filesystem.
 
+COPY --from=base --chown=10001:10001 /dsh-runtime-root/var/lib/dsh/ /var/lib/dsh/
+COPY --from=base --chown=10001:10001 /dsh-runtime-root/workspace/ /workspace/
+WORKDIR /opt/dsh/runtime
 COPY --from=build --chown=10001:10001 /opt/dsh/runtime/package.json ./package.json
 COPY --from=build --chown=10001:10001 /opt/dsh/runtime/pnpm-lock.yaml ./pnpm-lock.yaml
 COPY --from=build --chown=10001:10001 /opt/dsh/runtime/node_modules ./node_modules
@@ -66,7 +67,7 @@ COPY --from=build --chown=10001:10001 /opt/dsh/runtime/node_modules ./node_modul
 ENV NODE_ENV=production \
     HOME=/var/lib/dsh \
     DSH_HOME=/var/lib/dsh \
-    PATH=/opt/dsh/runtime/node_modules/.bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+    PATH=/opt/dsh/runtime/node_modules/.bin:/nodejs/bin
 
 WORKDIR /workspace
 USER 10001:10001
@@ -75,7 +76,7 @@ STOPSIGNAL SIGTERM
 # DSH's HMR loader requires Node internals. Calling the exact installed module
 # with the explicit Node flag avoids an amd64 startup race in the native-addon
 # fallback; runtime startup still never invokes npx, npm, pnpm or a download.
-ENTRYPOINT ["node", "--expose-internals", "/opt/dsh/runtime/node_modules/@deepseek-ai/dsh/lib/bin.js"]
+ENTRYPOINT ["/nodejs/bin/node", "--expose-internals", "/opt/dsh/runtime/node_modules/@deepseek-ai/dsh/lib/bin.js"]
 CMD ["web", "--host", "127.0.0.1", "--port", "3080", "--no-open"]
 
 FROM build AS dev-runtime

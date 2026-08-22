@@ -100,11 +100,14 @@ upstream defaults for indirect kernel-header matching. Grype database age and
 startup hash validation must remain enabled, and the database source URL must
 carry one SHA-256 checksum.
 
-The production DSH runtime deliberately removes npm, npx, Corepack, pnpm and
-Yarn from its final filesystem. They remain available only in build and
-development stages. SBOM, scan and license tools run on the GitHub runner
-against the resulting image; the runtime never needs network access or a
-package manager to produce evidence.
+The production DSH target copies the installed application into a pinned,
+shell-less Distroless Node 24 runtime. npm, npx, Corepack, pnpm, Yarn and the
+Debian build-stage tools never enter its final filesystem; they remain
+available only in build and development stages. SBOM, scan and license tools
+run on the GitHub runner against the resulting image; the runtime never needs
+network access or a package manager to produce evidence. Agent development
+that needs a shell or compiler uses the separately gated `dev-runtime`, not an
+escape from the production container.
 
 Registry publication, signing and deployment require separate approval even
 after the local gates pass.

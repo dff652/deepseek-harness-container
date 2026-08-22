@@ -14,6 +14,7 @@ ROOT = Path(__file__).resolve().parent.parent
 CHECKER = ROOT / "scripts/check-supply-chain-policy.py"
 SOURCE_REVISION = "a" * 40
 NODE_DIGEST = "sha256:" + "b" * 64
+NODE_RUNTIME_DIGEST = "sha256:" + "f" * 64
 CADDY_DIGEST = "sha256:" + "c" * 64
 DSH_MANIFEST = "sha256:" + "d" * 64
 
@@ -89,6 +90,11 @@ def base_documents() -> dict[str, object]:
                 "materials": [
                     {
                         "digest": {"sha256": NODE_DIGEST.removeprefix("sha256:")}
+                    },
+                    {
+                        "digest": {
+                            "sha256": NODE_RUNTIME_DIGEST.removeprefix("sha256:")
+                        }
                     }
                 ],
                 "invocation": {"environment": {"platform": "linux/amd64"}},
@@ -233,6 +239,8 @@ class SupplyChainPolicyTests(unittest.TestCase):
                 "2.11.4",
                 "--node-base-digest",
                 NODE_DIGEST,
+                "--node-runtime-digest",
+                NODE_RUNTIME_DIGEST,
                 "--caddy-digest",
                 CADDY_DIGEST,
                 "--source-revision",
@@ -392,6 +400,16 @@ class SupplyChainPolicyTests(unittest.TestCase):
         package_docs = base_documents()
         package_docs["dsh_sbom"]["artifacts"] = []
         self.assertNotEqual(self.run_case(package_docs).returncode, 0)
+
+        runtime_docs = base_documents()
+        runtime_docs["build_metadata"]["buildx.build.provenance"]["materials"] = [
+            {
+                "digest": {
+                    "sha256": NODE_DIGEST.removeprefix("sha256:")
+                }
+            }
+        ]
+        self.assertNotEqual(self.run_case(runtime_docs).returncode, 0)
 
 
 def high_vulnerability() -> dict[str, object]:

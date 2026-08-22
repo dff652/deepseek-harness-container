@@ -148,7 +148,8 @@ def validate_build_evidence(
     caddy_source: dict[str, Any],
     expected_arch: str,
     expected_platform: str,
-    expected_node_digest: str,
+    expected_node_build_digest: str,
+    expected_node_runtime_digest: str,
     source_revision: str,
     errors: list[str],
 ) -> None:
@@ -159,12 +160,19 @@ def validate_build_evidence(
     if environment.get("platform") != expected_platform:
         errors.append("build metadata: target platform mismatch")
     materials = provenance.get("materials", [])
-    if not any(
-        item.get("digest", {}).get("sha256") == expected_node_digest.removeprefix("sha256:")
-        for item in materials
-        if isinstance(item, dict)
+    for label, expected_digest in (
+        ("build", expected_node_build_digest),
+        ("runtime", expected_node_runtime_digest),
     ):
-        errors.append("build metadata: pinned Node child digest is absent")
+        if not any(
+            item.get("digest", {}).get("sha256")
+            == expected_digest.removeprefix("sha256:")
+            for item in materials
+            if isinstance(item, dict)
+        ):
+            errors.append(
+                f"build metadata: pinned Node {label} child digest is absent"
+            )
 
     descriptor = metadata.get("containerimage.descriptor", {})
     if descriptor.get("platform") != {"architecture": expected_arch, "os": "linux"}:
@@ -482,6 +490,7 @@ def main() -> int:
     parser.add_argument("--dsh-version", required=True)
     parser.add_argument("--caddy-version", required=True)
     parser.add_argument("--node-base-digest", required=True)
+    parser.add_argument("--node-runtime-digest", required=True)
     parser.add_argument("--caddy-digest", required=True)
     parser.add_argument("--source-revision", required=True)
     parser.add_argument("--output", required=True)
@@ -519,7 +528,8 @@ def main() -> int:
         caddy_source=caddy_source,
         expected_arch=args.architecture,
         expected_platform=args.platform,
-        expected_node_digest=args.node_base_digest,
+        expected_node_build_digest=args.node_base_digest,
+        expected_node_runtime_digest=args.node_runtime_digest,
         source_revision=args.source_revision,
         errors=errors,
     )

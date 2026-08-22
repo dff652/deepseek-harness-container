@@ -14,6 +14,7 @@ grep -Fq 'driver-opts: image=moby/buildkit:v0.29.0@sha256:0039c1d47e8748b5afea56
 # shellcheck disable=SC2016 # Inspect literal workflow shell syntax.
 grep -Fq 'test "$(uname -m)" = aarch64' "$workflow" || fail "native runner architecture is not enforced"
 grep -Fq 'native-candidate-lock.json' "$workflow" || fail "native candidate lock is not generated"
+grep -Fq 'NODE_RUNTIME_REF=gcr.io/distroless/nodejs24-debian13@sha256:8f5b4fe36a991614a46469e4ec06f65838a2bc22d61f560aac9d40ae62e9ac5a' "$workflow" || fail "native distroless runtime child is not pinned"
 grep -Fq 'del(.images.binfmt, .images.arm64Probe)' "$workflow" || fail "QEMU-only tool identities remain in the native lock"
 grep -Fq 'buildx-version.txt' "$workflow" || fail "native Buildx version evidence missing"
 grep -Fq 'builder-inspect.txt' "$workflow" || fail "native builder evidence missing"

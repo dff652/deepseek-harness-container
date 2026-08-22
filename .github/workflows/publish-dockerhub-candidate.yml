@@ -69,6 +69,8 @@ jobs:
             uname: x86_64
             node_base_ref: node:24.19.0-bookworm-slim@sha256:65932751ed4073ed02f5c04e494e4b2572a891b7dbea0568a863dc80341bf848
             node_base_digest: sha256:65932751ed4073ed02f5c04e494e4b2572a891b7dbea0568a863dc80341bf848
+            node_runtime_ref: gcr.io/distroless/nodejs24-debian13@sha256:579735ae8373ff1ab6c4aa251480fd17ae6ec1b7f83b1bfc76bf6003d0fb242b
+            node_runtime_digest: sha256:579735ae8373ff1ab6c4aa251480fd17ae6ec1b7f83b1bfc76bf6003d0fb242b
             caddy_ref: caddy:2.11.4@sha256:98eb57d882ccd5213d1688764db10c1ca2c58a1ca3a6717a3411ad798f7a423a
             caddy_digest: sha256:98eb57d882ccd5213d1688764db10c1ca2c58a1ca3a6717a3411ad798f7a423a
             runtime_test: tests/amd64-runtime.sh
@@ -78,6 +80,8 @@ jobs:
             uname: aarch64
             node_base_ref: node:24.19.0-bookworm-slim@sha256:c133efe216ffb6e785ed9a8be55a29fcb86775e8008ae0a9f0ed6af4f175bb03
             node_base_digest: sha256:c133efe216ffb6e785ed9a8be55a29fcb86775e8008ae0a9f0ed6af4f175bb03
+            node_runtime_ref: gcr.io/distroless/nodejs24-debian13@sha256:8f5b4fe36a991614a46469e4ec06f65838a2bc22d61f560aac9d40ae62e9ac5a
+            node_runtime_digest: sha256:8f5b4fe36a991614a46469e4ec06f65838a2bc22d61f560aac9d40ae62e9ac5a
             caddy_ref: caddy:2.11.4@sha256:1172d4213087d3fc30bafc7ff2c2896180eb0c41ff7f75f315568fb36cabdcba
             caddy_digest: sha256:1172d4213087d3fc30bafc7ff2c2896180eb0c41ff7f75f315568fb36cabdcba
             runtime_test: tests/arm64-runtime.sh
@@ -110,6 +114,7 @@ jobs:
             --target runtime \
             --build-arg 'TARGETPLATFORM=${{ matrix.platform }}' \
             --build-arg 'NODE_BASE_REF=${{ matrix.node_base_ref }}' \
+            --build-arg 'NODE_RUNTIME_REF=${{ matrix.node_runtime_ref }}' \
             --label "org.opencontainers.image.revision=${GITHUB_SHA}" \
             --tag "$LOCAL_TAG" \
             --metadata-file evidence/dsh-build-metadata.json \
@@ -179,6 +184,7 @@ jobs:
             --dsh-version "$DSH_VERSION" \
             --caddy-version "$CADDY_VERSION" \
             --node-base-digest '${{ matrix.node_base_digest }}' \
+            --node-runtime-digest '${{ matrix.node_runtime_digest }}' \
             --caddy-digest '${{ matrix.caddy_digest }}' \
             --source-revision "$GITHUB_SHA" \
             --output evidence/policy-summary.json

@@ -7,6 +7,7 @@ readonly BUILDER_NAME='dsh-arm64-qemu'
 readonly BUILDKIT_REF='moby/buildkit:v0.29.0@sha256:0039c1d47e8748b5afea56f4e85f14febaf34452bd99d9552d2daa82262b5cc5'
 readonly IMAGE_TAG='local/dsh:0.1.1-rc.1-arm64'
 readonly NODE_BASE_REF='node:24.19.0-bookworm-slim@sha256:c133efe216ffb6e785ed9a8be55a29fcb86775e8008ae0a9f0ed6af4f175bb03'
+readonly NODE_RUNTIME_REF='gcr.io/distroless/nodejs24-debian13@sha256:8f5b4fe36a991614a46469e4ec06f65838a2bc22d61f560aac9d40ae62e9ac5a'
 readonly CADDY_REF='caddy:2.11.4@sha256:1172d4213087d3fc30bafc7ff2c2896180eb0c41ff7f75f315568fb36cabdcba'
 readonly ARTIFACT_ROOT="$REPO_ROOT/artifacts"
 
@@ -29,6 +30,7 @@ docker buildx build \
   --target runtime \
   --build-arg TARGETPLATFORM=linux/arm64 \
   --build-arg "NODE_BASE_REF=$NODE_BASE_REF" \
+  --build-arg "NODE_RUNTIME_REF=$NODE_RUNTIME_REF" \
   --tag "$IMAGE_TAG" \
   --metadata-file "$ARTIFACT_DIR/dsh-build-metadata.json" \
   --output "type=docker,dest=$ARTIFACT_DIR/dsh-0.1.1-rc.1-arm64.tar" \

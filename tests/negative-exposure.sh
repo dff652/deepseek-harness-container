@@ -15,10 +15,19 @@ caddyfile="$ROOT/Caddyfile"
 
 # Source-level negative boundaries. These checks intentionally inspect the
 # shipped files, not only a developer's current environment.
-if rg -n -i 'privileged:\s*true|network_mode:\s*host|/var/run/docker\.sock|SYS_ADMIN|NET_ADMIN|(^|[[:space:]])latest([:@[:space:]]|$)' "$compose"; then
+if command -v rg >/dev/null 2>&1; then
+  forbidden_output=$(rg -n -i 'privileged:\s*true|network_mode:\s*host|/var/run/docker\.sock|SYS_ADMIN|NET_ADMIN|(^|[[:space:]])latest([:@[:space:]]|$)' "$compose" || true)
+  port_output=$(rg -n '3080:3080|:3080:3080' "$compose" || true)
+else
+  forbidden_output=$(grep -Eni 'privileged:[[:space:]]*true|network_mode:[[:space:]]*host|/var/run/docker\.sock|SYS_ADMIN|NET_ADMIN|(^|[[:space:]])latest([:@[:space:]]|$)' "$compose" || true)
+  port_output=$(grep -En '3080:3080|:3080:3080' "$compose" || true)
+fi
+if [[ -n "$forbidden_output" ]]; then
+  printf '%s\n' "$forbidden_output"
   fail "forbidden Compose exposure or floating version"
 fi
-if rg -n '3080:3080|:3080:3080' "$compose"; then
+if [[ -n "$port_output" ]]; then
+  printf '%s\n' "$port_output"
   fail "DSH port 3080 is published"
 fi
 

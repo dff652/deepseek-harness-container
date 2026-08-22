@@ -135,20 +135,17 @@ passed build, runtime, native-module and bundle-hash gates for source commit
 `84a8e5d…`. Its candidate lock still records null SBOM/provenance, so the run
 does not satisfy or bypass the publication policy.
 
-The hardened local AMD64 runtime passed the disconnected DSH/native-module
-smoke and its final filesystem no longer exposes npm, npx, Corepack, pnpm or
-Yarn. Against Grype DB built
-2026-08-21, the strict empty-exception policy still found 24 unapproved
-High/Critical matches in the pinned Node/Debian image and 35 in the pinned
-Caddy image. Caddy's Go-symbol fallback can over-report module reachability,
-but no finding is waived automatically. These are 59 match records covering 50
-unique advisory IDs, not 59 confirmed exploitable vulnerabilities. Sixteen
-Caddy matches had a scanner-provided fixed version; none of the DSH/Bookworm
-matches did. The evidence is AMD64-only and cannot be copied into an ARM64
-review. Follow the [vulnerability triage runbook](vulnerability-triage.md) to
-update the bases or, only after reachability/risk review, add exact owned and
-expiring exceptions. GitHub Docker Hub secrets were also absent when this hold
-was recorded.
+Against Grype DB built 2026-08-21, the historical strict empty-exception scan
+found 24 unapproved High/Critical DSH/Bookworm matches and 35 Caddy matches.
+The 2026-08-22 Distroless remediation worktree reduced DSH to four matches on
+both AMD64-native and ARM64-QEMU images, while the Caddy AMD64 snapshot remains
+35. The current comparable AMD64 appliance total is therefore 39 match records
+covering 34 unique advisory IDs. Sixteen Caddy matches have a scanner-provided
+fixed version; none of the four Distroless runtime matches do. No finding is
+waived automatically, ARM64 Caddy evidence must still be generated natively,
+and the GitHub Docker Hub secrets remain absent. Follow the
+[vulnerability triage runbook](vulnerability-triage.md) before any exact owned
+and expiring exception is considered.
 
 Repository creation, GitHub push, Docker Hub publication, formal release,
 signing and production deployment remain independent auditable transitions.

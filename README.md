@@ -15,24 +15,28 @@ images passed the shared runtime, native-module, Compose and Caddy HTTPS gateway
 acceptance; the native ARM candidate passed its build/runtime/bundle gates. No
 container image has been published, released or deployed.**
 
-The older local candidates remain historical evidence. The hardened AMD64 and
-QEMU ARM64 worktree images passed their network-disabled runtime regressions,
-and the refreshed GitHub-native ARM64 candidate passed the same production
-runtime boundary. Their final filesystems no longer expose npm, npx, Corepack,
-pnpm or Yarn. A fresh strict Syft/Grype review of the AMD64 appliance still
-reports unapproved High/Critical matches in the pinned Node base and Caddy
-image. The Docker Hub workflow therefore remains fail-closed; there is not yet
-a publishable image.
+The older local candidates remain historical evidence. A new remediation
+worktree uses the exact Node `24.19.0-bookworm-slim` image only as the build
+stage and copies DSH into pinned, shell-less Distroless Node 24 Debian 13
+runtime children. AMD64-native and ARM64-QEMU images passed the
+network-disabled runtime/native-module boundary. A same-tool/database scan
+reduced DSH High/Critical matches from 24 to 4 on both architectures; the
+pinned Caddy image still has 35 AMD64 matches. The Docker Hub workflow
+therefore remains fail-closed; this is not yet a publishable image or native
+ARM acceptance.
 
-The corrected amd64 candidate records DSH image ID `sha256:5a7c4f1a…` and OCI
+The earlier corrected amd64 candidate records DSH image ID `sha256:5a7c4f1a…` and OCI
 config digest `sha256:5e82d2be…`; its runtime smoke
 also loads Koffi, node-pty, Landlock and Sharp with networking disabled. The
 local appliance run used the exported Caddy root CA (not `-k`) and proved
 401 without credentials, 200 with credentials, 421 for an unapproved Host,
 403 for a mismatched Origin, healthy services and no published port 3080.
-The ARM candidate records image ID `sha256:bec5923e…` and config digest
-`sha256:66089779…`; its QEMU appliance also proved the same trusted-CA
-401/200, bad-Host 421, bad-Origin 403, healthy services and no published 3080.
+The latest shell-less QEMU ARM64 candidate records image ID
+`sha256:16cd5261…` and config digest `sha256:a6cb08c0…`; its DSH version,
+native modules, loopback Web, read-only root and UID 10001 checks passed. Its
+full Compose/Caddy appliance and native-ARM reruns remain pending. The exact
+AMD64 image passed a fresh-volume Compose cold start plus trusted-CA 401/200,
+bad-Host 421, bad-Origin 403 and no-3080 checks.
 GitHub [native ARM run 32553165653](https://github.com/dff652/deepseek-harness-container/actions/runs/32553165653)
 then rebuilt hardened source commit `84a8e5d…`, producing manifest
 `sha256:716a9e62…` and config `sha256:90145b53…`. Every downloaded bundle hash
@@ -52,7 +56,7 @@ The candidate targets this exact tuple:
 |---|---:|---|
 | DeepSeek Harness | `0.1.1-rc.1` | AMD64 native, ARM64 QEMU and GitHub native ARM candidates passed; production ARM pending |
 | DSH tag/commit | `dsh-v0.1.1-rc.1` / `528c682e061696f5a160f363f236ecbf53cbd006` | Verified upstream identity |
-| Node.js | `24.19.0` | Locked in runtime and base image |
+| Node.js | `24.19.0` | Bookworm build image plus Distroless Debian 13 production runtime locked per architecture |
 | pnpm | `11.7.0` | Locked with Corepack integrity |
 | Caddy | `2.11.4` | OCI index plus AMD64/ARM64 child digests locked |
 | Production target | `linux/arm64`, glibc | QEMU and GitHub native candidates passed; production ARM pending |
@@ -130,8 +134,8 @@ remain gated by the release checklist and real ARM acceptance.
 See [dual-architecture maintenance and publication](docs/release-maintenance.md)
 for the update order, tag policy and rollback contract. The
 [vulnerability triage runbook](docs/vulnerability-triage.md) records the
-current hold, explains why 59 scanner matches are not 59 confirmed exploitable
-vulnerabilities, and defines the remediation/exception boundary.
+historical 59-match hold, the verified 39-match Distroless remediation
+snapshot, and the remediation/exception boundary.
 
 ## Design boundaries
 

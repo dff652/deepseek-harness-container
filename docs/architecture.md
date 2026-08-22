@@ -114,14 +114,16 @@ created because the bind address was absent.
 
 One multi-stage Dockerfile should produce:
 
-- `runtime`: exact Node/DSH runtime, PID 1 helper and approved providers;
+- `runtime`: exact DSH closure copied into a pinned shell-less Distroless Node
+  runtime, with Compose `init: true` supplying the PID 1 helper;
 - `dev-runtime`: the same base plus pinned Git, ripgrep, compilers and project
   test tools for an Agent that develops code.
 
 The builder may contain Python, `make` and `g++` for native dependencies. The
-runtime copies only the reviewed closure. Both targets run as a fixed non-root
-UID/GID, use a read-only root filesystem and write only to declared volumes and
-tmpfs.
+production runtime copies only the reviewed closure and contains no shell or
+package manager. The development target is a separate capability boundary and
+retains the controlled toolchain. Both targets run as a fixed non-root UID/GID,
+use a read-only root filesystem and write only to declared volumes and tmpfs.
 
 ### State
 
@@ -156,7 +158,7 @@ real ARM gate passes.
 
 A release replaces every placeholder with an exact manifest digest and records:
 
-- base image manifest and platform digest;
+- Node build image plus Distroless runtime index/platform digests;
 - DSH/npm integrity and complete pnpm lock;
 - allowlisted dependency build scripts;
 - Caddy image digest;
