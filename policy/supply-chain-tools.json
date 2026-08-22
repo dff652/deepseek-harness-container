@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "syft": {
+    "version": "1.51.0",
+    "gitCommit": "2293641e3bd628a01bb37639318d62c0ebe89b39",
+    "action": "anchore/sbom-action",
+    "actionCommit": "e22c389904149dbc22b58101806040fa8d37a610"
+  },
+  "grype": {
+    "version": "0.117.0",
+    "gitCommit": "b5fa92bbcbef655497e3be840a2f718380e2cdd3",
+    "action": "anchore/scan-action",
+    "actionCommit": "e1165082ffb1fe366ebaf02d8526e7c4989ea9d2"
+  },
+  "gitleaks": {
+    "version": "8.30.1",
+    "action": "gitleaks/gitleaks-action",
+    "actionCommit": "e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e"
+  }
+}

@@ -134,16 +134,26 @@ SHA256SUMS
 ```
 
 Docker Hub is an optional public candidate distribution channel, not the
-air-gap installation interface. The manual native-runner workflow publishes
-architecture-specific `-amd64-candidate` and `-arm64-candidate` tags before it
-creates a verified two-platform `-candidate` manifest. It never publishes
-`latest`; formal tags still require real ARM and supply-chain release gates.
+air-gap installation interface. The manual workflow first completes native
+AMD64/ARM64 runtime and supply-chain gates without registry credentials. It
+transports the approved local images as short-retention Actions artifacts;
+only a dependent publication job receives Docker Hub credentials, pushes the
+architecture-specific tags, resolves their digests and creates a verified
+two-platform `-candidate` manifest from those digests. It refuses to replace
+an existing candidate tag and never publishes `latest`; formal tags still
+require real ARM, signed attestations and the remaining release gates.
 See [dual-architecture maintenance and publication](release-maintenance.md).
 
 Docker-archive output does not preserve registry-attached attestations. When a
 candidate is not pushed, SBOM and provenance are carried as separately hashed
 files. If a later authorized workflow pushes a digest to GHCR, its attached
 attestations and an offline verification bundle must both be retained.
+
+For the Docker Hub candidate path, "provenance" currently means separately
+hashed BuildKit `mode=max` build metadata plus the source/image coherence
+summary. It is not a signed registry attestation. Direct-push SBOM/provenance
+attestations and signing belong to the separately authorized formal-release
+workflow because the local Docker image store does not preserve attestations.
 
 Actions artifacts are temporary transport, not the long-term registry or the
 release authority. Tar the bundle before upload so file modes are not silently

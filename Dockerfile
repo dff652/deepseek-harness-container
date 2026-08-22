@@ -46,10 +46,18 @@ LABEL org.opencontainers.image.title="DeepSeek Harness runtime" \
       org.opencontainers.image.vendor="deepseek-harness-container" \
       org.opencontainers.image.source="https://github.com/deepseek-ai/deepseek-harness"
 
+# Package managers are build-time tools. The development target retains them;
+# the production target removes their install surface and dependency closure.
 RUN groupadd --gid 10001 dsh \
  && useradd --uid 10001 --gid 10001 --home-dir /var/lib/dsh --create-home \
       --shell /usr/sbin/nologin dsh \
- && install --directory --owner=10001 --group=10001 /workspace
+ && install --directory --owner=10001 --group=10001 /workspace \
+ && rm -rf /opt/corepack /opt/yarn-v1.22.22 /pnpm \
+      /usr/local/lib/node_modules/corepack \
+      /usr/local/lib/node_modules/npm \
+ && rm -f /usr/local/bin/corepack /usr/local/bin/npm /usr/local/bin/npx \
+      /usr/local/bin/pnpm /usr/local/bin/pnpx /usr/local/bin/yarn \
+      /usr/local/bin/yarnpkg
 
 COPY --from=build --chown=10001:10001 /opt/dsh/runtime/package.json ./package.json
 COPY --from=build --chown=10001:10001 /opt/dsh/runtime/pnpm-lock.yaml ./pnpm-lock.yaml
@@ -57,7 +65,8 @@ COPY --from=build --chown=10001:10001 /opt/dsh/runtime/node_modules ./node_modul
 
 ENV NODE_ENV=production \
     HOME=/var/lib/dsh \
-    DSH_HOME=/var/lib/dsh
+    DSH_HOME=/var/lib/dsh \
+    PATH=/opt/dsh/runtime/node_modules/.bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 WORKDIR /workspace
 USER 10001:10001

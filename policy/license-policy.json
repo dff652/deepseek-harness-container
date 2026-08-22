@@ -1,0 +1,105 @@
+{
+  "schemaVersion": 1,
+  "scopePathPrefix": "/opt/dsh/runtime/node_modules/",
+  "allowedSpdxExpressions": [
+    "0BSD",
+    "Apache-2.0",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "LGPL-3.0-or-later",
+    "MIT",
+    "Python-2.0"
+  ],
+  "globallyDeniedSpdxExpressions": [
+    "AGPL-1.0-only",
+    "AGPL-1.0-or-later",
+    "AGPL-3.0-only",
+    "AGPL-3.0-or-later",
+    "BUSL-1.1",
+    "SSPL-1.0"
+  ],
+  "missingLicenseExceptions": [
+    {
+      "name": "@google/genai/node",
+      "version": "UNKNOWN",
+      "purl": "pkg:npm/%40google/genai%2Fnode",
+      "reason": "Nested export manifest; license review is inherited from the pinned @google/genai 1.52.0 package.",
+      "owner": "maintainer",
+      "tracking": "runtime/pnpm-lock.yaml:@google/genai@1.52.0",
+      "expiresAt": "2026-11-30"
+    },
+    {
+      "name": "@google/genai/web",
+      "version": "UNKNOWN",
+      "purl": "pkg:npm/%40google/genai%2Fweb",
+      "reason": "Nested export manifest; license review is inherited from the pinned @google/genai 1.52.0 package.",
+      "owner": "maintainer",
+      "tracking": "runtime/pnpm-lock.yaml:@google/genai@1.52.0",
+      "expiresAt": "2026-11-30"
+    },
+    {
+      "name": "web-streams-polyfill-es2018",
+      "version": "UNKNOWN",
+      "purl": "pkg:npm/web-streams-polyfill-es2018",
+      "reason": "Nested compatibility manifest; license review is inherited from pinned web-streams-polyfill 3.3.3.",
+      "owner": "maintainer",
+      "tracking": "runtime/pnpm-lock.yaml:web-streams-polyfill@3.3.3",
+      "expiresAt": "2026-11-30"
+    },
+    {
+      "name": "web-streams-polyfill-es6",
+      "version": "UNKNOWN",
+      "purl": "pkg:npm/web-streams-polyfill-es6",
+      "reason": "Nested compatibility manifest; license review is inherited from pinned web-streams-polyfill 3.3.3.",
+      "owner": "maintainer",
+      "tracking": "runtime/pnpm-lock.yaml:web-streams-polyfill@3.3.3",
+      "expiresAt": "2026-11-30"
+    },
+    {
+      "name": "web-streams-ponyfill",
+      "version": "UNKNOWN",
+      "purl": "pkg:npm/web-streams-ponyfill",
+      "reason": "Nested compatibility manifest; license review is inherited from pinned web-streams-polyfill 3.3.3.",
+      "owner": "maintainer",
+      "tracking": "runtime/pnpm-lock.yaml:web-streams-polyfill@3.3.3",
+      "expiresAt": "2026-11-30"
+    },
+    {
+      "name": "web-streams-ponyfill-es2018",
+      "version": "UNKNOWN",
+      "purl": "pkg:npm/web-streams-ponyfill-es2018",
+      "reason": "Nested compatibility manifest; license review is inherited from pinned web-streams-polyfill 3.3.3.",
+      "owner": "maintainer",
+      "tracking": "runtime/pnpm-lock.yaml:web-streams-polyfill@3.3.3",
+      "expiresAt": "2026-11-30"
+    },
+    {
+      "name": "web-streams-ponyfill-es6",
+      "version": "UNKNOWN",
+      "purl": "pkg:npm/web-streams-ponyfill-es6",
+      "reason": "Nested compatibility manifest; license review is inherited from pinned web-streams-polyfill 3.3.3.",
+      "owner": "maintainer",
+      "tracking": "runtime/pnpm-lock.yaml:web-streams-polyfill@3.3.3",
+      "expiresAt": "2026-11-30"
+    },
+    {
+      "name": "ConPTY Interface Library",
+      "version": "1.25.260303002-preview",
+      "purl": "",
+      "reason": "Windows-only binary cataloged inside pinned node-pty 1.2.0-beta.15; it is unreachable on the Linux runtime.",
+      "owner": "maintainer",
+      "tracking": "runtime/pnpm-lock.yaml:node-pty@1.2.0-beta.15",
+      "expiresAt": "2026-11-30"
+    },
+    {
+      "name": "Console Window and PTY Host (Open Source)",
+      "version": "1.25.260303002-preview",
+      "purl": "",
+      "reason": "Windows-only binary cataloged inside pinned node-pty 1.2.0-beta.15; it is unreachable on the Linux runtime.",
+      "owner": "maintainer",
+      "tracking": "runtime/pnpm-lock.yaml:node-pty@1.2.0-beta.15",
+      "expiresAt": "2026-11-30"
+    }
+  ]
+}

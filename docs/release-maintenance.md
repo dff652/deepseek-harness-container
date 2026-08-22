@@ -30,7 +30,9 @@ For every DSH/Node/pnpm/Caddy update:
    SHA-256 and inspection/build metadata. Never copy one environment's output
    lock into another.
 8. Run static contracts, disconnected Compose, Caddy trust/negative tests and
-   secret/license/vulnerability gates.
+   secret/license/vulnerability gates. Generate SBOMs from both the actual DSH
+   image and the exact Caddy child image; scanning only the lockfile is not an
+   appliance gate.
 9. Publish candidate tags only after both native architecture jobs pass.
 10. Promote to a formal version only after real disconnected ARM browser,
     model/MCP, workspace, restart and cold-boot acceptance plus the complete
@@ -52,13 +54,34 @@ Candidate publication uses repository `dff652/deepseek-harness-container`:
 
 The architecture tags are immutable build inputs for the candidate manifest.
 The unsuffixed `-candidate` tag must resolve to an OCI index containing exactly
-`linux/amd64` and `linux/arm64`. It is allowed to move only when both
-architecture candidates for the same DSH version have been rebuilt from the
-same reviewed Git commit.
+`linux/amd64` and `linux/arm64`. The workflow refuses to replace any of the
+three tags. A rebuilt candidate therefore needs a new `CANDIDATE_VERSION`
+(for example `0.1.1-rc.1-r1`) while `DSH_VERSION` continues to record the
+actual upstream package version.
 
 Do not publish `latest`, silently replace an architecture-specific tag, or
 create a dual-architecture manifest from different source commits. Formal
 version tags and any moving stable channel require a separate release approval.
+
+Before adding registry credentials, enable
+[Docker Hub's repository-side tag immutability](https://docs.docker.com/docker-hub/repos/manage/hub-images/immutable-tags/)
+for candidate tags. One suitable Go/RE2 expression is:
+
+```text
+^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?-(amd64-candidate|arm64-candidate|candidate)$
+```
+
+The workflow's pre-push existence check improves diagnostics but cannot remove
+a registry race; server-side immutability is the enforcement boundary. Record
+the Docker Hub setting in the publication evidence before the first push.
+
+Registry pushes are not transactional. If one architecture tag is pushed and
+a later push or manifest creation fails, retain the publication evidence and do
+not overwrite the surviving immutable tag. Investigate the failure, increment
+`CANDIDATE_VERSION` with a repository-owned rebuild suffix, rebuild both
+architectures from one commit and publish a new three-tag set. Deleting the
+partial remote tag is a separate destructive registry operation and is not the
+default retry path.
 
 ## GitHub Actions publication
 
@@ -69,10 +92,57 @@ Actions secrets after the public repository exists:
 - `DOCKERHUB_USERNAME`: Docker Hub namespace owner;
 - `DOCKERHUB_TOKEN`: a scoped access token that can push only this repository.
 
-The workflow builds on native AMD64 and ARM64 runners, runs the corresponding
-network-disabled runtime smoke, pushes the two architecture candidate tags and
-then creates and verifies the dual-architecture manifest. A failed architecture
-job prevents manifest publication.
+The workflow has three trust stages:
+
+1. A no-registry-secret preflight scans complete Git history with pinned
+   Gitleaks and runs repository/policy tests.
+2. Native AMD64 and ARM64 jobs build and run the network-disabled smoke, pull
+   the exact Caddy child, generate Syft plus CycloneDX SBOMs for both images,
+   scan the Syft documents with Grype, and enforce source/digest/license/
+   vulnerability policies. Matrix fail-fast is disabled so one architecture's
+   policy failure does not cancel collection of the other architecture's
+   evidence. Evidence uploads even when policy fails; image archives upload
+   only after it passes.
+3. Only the dependent publication job receives Docker Hub credentials. It
+   loads the two approved archives, refuses existing tags, pushes architecture
+   tags, verifies source labels/platforms, and creates the final index from
+   resolved child digests.
+
+The published tags contain only the DSH runtime image. Caddy stays in the
+Docker Official Image repository at its exact per-platform digest. It is
+included in appliance SBOM/vulnerability checks, while disconnected delivery
+uses the build scripts' separate Caddy archive. Do not describe the Docker Hub
+DSH manifest by itself as a complete offline appliance bundle.
+
+`policy/vulnerability-allowlist.json` starts empty. Every exception must match
+an exact vulnerability ID, PURL, package and version and include owner,
+tracking, reason, applicable architecture(s) and an unexpired date; wildcard,
+expired, duplicate and unused entries fail for the selected architecture.
+`policy/license-policy.json` applies the same expiring-review
+model to known scanner gaps and allowlists the reviewed SPDX expressions for
+the DSH runtime dependency path. Caddy's full inventory is retained even where
+Go binary SBOM extraction cannot recover every dependency license; this is a
+known evidence limitation, not permission to ignore detected forbidden terms.
+The checker hard-requires High and Critical blocking and validates the report's
+filter/ignore configuration plus the checksum-bearing Grype database source;
+changing the JSON severity list cannot weaken that invariant.
+
+### Current publication hold (2026-08-22)
+
+The hardened local AMD64 runtime passed the disconnected DSH/native-module
+smoke and its final filesystem no longer exposes npm, npx, Corepack, pnpm or
+Yarn. Against Grype DB built
+2026-08-21, the strict empty-exception policy still found 24 unapproved
+High/Critical matches in the pinned Node/Debian image and 35 in the pinned
+Caddy image. Caddy's Go-symbol fallback can over-report module reachability,
+but no finding is waived automatically. These are 59 match records covering 50
+unique advisory IDs, not 59 confirmed exploitable vulnerabilities. Sixteen
+Caddy matches had a scanner-provided fixed version; none of the DSH/Bookworm
+matches did. The evidence is AMD64-only and cannot be copied into an ARM64
+review. Follow the [vulnerability triage runbook](vulnerability-triage.md) to
+update the bases or, only after reachability/risk review, add exact owned and
+expiring exceptions. GitHub Docker Hub secrets were also absent when this hold
+was recorded.
 
 Repository creation, GitHub push, Docker Hub publication, formal release,
 signing and production deployment remain independent auditable transitions.

@@ -84,8 +84,36 @@ record them as pending
 and must not imply that they were generated. A QEMU build cannot replace
 native ARM runtime tests.
 
+The Docker Hub candidate workflow is stricter than those historical bundles:
+it generates Syft and CycloneDX SBOMs for both the actual DSH image and the
+pinned Caddy child image, scans the Syft documents with Grype, and validates
+BuildKit metadata, source revision, platform and digest coherence before any
+registry login. High/Critical matches fail unless an exact package/PURL/version
+exception with owner, tracking reference, reason and future expiry exists.
+Missing DSH dependency licenses likewise require an exact, expiring review;
+unrecognized or newly introduced license expressions fail closed.
+
+The checker also requires the blocked severity set to remain exactly High plus
+Critical. It rejects `only-fixed`, `only-notfixed`, `ignore-wontfix`, VEX,
+exclude/suppression filters and any Grype ignore rule outside the four pinned
+upstream defaults for indirect kernel-header matching. Grype database age and
+startup hash validation must remain enabled, and the database source URL must
+carry one SHA-256 checksum.
+
+The production DSH runtime deliberately removes npm, npx, Corepack, pnpm and
+Yarn from its final filesystem. They remain available only in build and
+development stages. SBOM, scan and license tools run on the GitHub runner
+against the resulting image; the runtime never needs network access or a
+package manager to produce evidence.
+
 Registry publication, signing and deployment require separate approval even
 after the local gates pass.
+
+The current scan snapshot and the required per-finding review procedure are in
+[the vulnerability triage runbook](docs/vulnerability-triage.md). Counts in
+that document are tied to exact AMD64 image/tool/database evidence and must not
+be reused as ARM64 evidence. Scanner output is neither an automatic waiver nor
+automatic proof of reachability.
 
 ## Reporting
 

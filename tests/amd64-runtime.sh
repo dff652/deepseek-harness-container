@@ -18,6 +18,18 @@ trap cleanup EXIT
 test "$(docker image inspect "$IMAGE_REF" --format '{{.Os}}/{{.Architecture}}')" = \
   'linux/amd64'
 test "$(docker run --rm --network none "$IMAGE_REF" --version)" = '0.1.1-rc.1'
+docker run --rm --network none --entrypoint sh "$IMAGE_REF" -c '
+  for command in npm npx pnpm pnpx corepack yarn yarnpkg; do
+    if command -v "$command" >/dev/null 2>&1; then
+      echo "unexpected production package manager: $command" >&2
+      exit 1
+    fi
+  done
+  for path in /opt/corepack /opt/yarn-v1.22.22 /pnpm \
+    /usr/local/lib/node_modules/corepack /usr/local/lib/node_modules/npm; do
+    test ! -e "$path" && test ! -L "$path"
+  done
+'
 docker run --rm \
   --network none \
   --tmpfs /tmp:rw,noexec,nosuid,nodev,size=64m \
@@ -62,4 +74,4 @@ done
 
 test "$(docker exec "$CONTAINER_NAME" id -u)" = '10001'
 test -z "$(docker port "$CONTAINER_NAME")"
-printf 'PASS: amd64 DSH runtime version, loopback Web and non-root boundary\n'
+printf 'PASS: amd64 DSH runtime, native modules, no package manager, loopback Web and non-root boundary\n'

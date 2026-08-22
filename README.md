@@ -15,6 +15,13 @@ images passed the shared runtime, native-module, Compose and Caddy HTTPS gateway
 acceptance; the native ARM candidate passed its build/runtime/bundle gates. No
 container image has been published, released or deployed.**
 
+Those recorded candidates predate the current runtime hardening and remain
+historical evidence. The hardened AMD64 worktree image has passed its
+network-disabled runtime regression and its final filesystem no longer exposes
+npm, npx, Corepack, pnpm or Yarn, but a fresh strict Syft/Grype review still reports unapproved
+High/Critical matches in the pinned Node base and Caddy image. The Docker Hub
+workflow therefore remains fail-closed; there is not yet a publishable image.
+
 The corrected amd64 candidate records DSH image ID `sha256:5a7c4f1a…` and OCI
 config digest `sha256:5e82d2be…`; its runtime smoke
 also loads Koffi, node-pty, Landlock and Sharp with networking disabled. The
@@ -97,14 +104,31 @@ dff652/deepseek-harness-container:0.1.1-rc.1-candidate
 ```
 
 The last tag is a manifest list containing exactly Linux AMD64 and ARM64. The
-workflow builds on native GitHub runners, smokes each architecture before its
-push and requires the literal confirmation `publish-candidate`. It needs the
-repository secrets `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN`. It never writes
-`latest`; formal version tags remain gated by the release checklist and real
-ARM acceptance.
+workflow requires the literal confirmation `publish-candidate`, first scans
+the complete Git history for secrets, then builds and smokes on native GitHub
+runners. Syft generates DSH and Caddy SBOMs from the actual images; Grype scans
+those exact SBOMs; repository policy checks licenses, unapproved High/Critical
+matches, source revision, platform and digests. Only after both architecture
+jobs pass does a separate job download the approved image archives, log in,
+push the architecture tags and create the manifest from resolved child
+digests. Existing candidate tags are never replaced.
+
+This Docker Hub repository publishes the DSH runtime image only. Caddy remains
+the separately pinned Docker Official Image referenced by Compose; it is
+scanned as part of the appliance gate but is not copied into this repository.
+The offline bundle produced by the architecture build scripts contains both
+DSH and the exact Caddy child archive.
+
+The repository secrets `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN` are required
+only by that final job and are not configured yet. The workflow never writes
+`latest`; formal version tags, signed registry attestations and production use
+remain gated by the release checklist and real ARM acceptance.
 
 See [dual-architecture maintenance and publication](docs/release-maintenance.md)
-for the update order, tag policy and rollback contract.
+for the update order, tag policy and rollback contract. The
+[vulnerability triage runbook](docs/vulnerability-triage.md) records the
+current hold, explains why 59 scanner matches are not 59 confirmed exploitable
+vulnerabilities, and defines the remediation/exception boundary.
 
 ## Design boundaries
 
@@ -162,6 +186,7 @@ boundary. Publishing raw DSH HTTP by IP is not the accepted alternative.
 - [Python SDK headless deployment evaluation](docs/python-sdk-evaluation.md)
 - [Security policy](SECURITY.md)
 - [Dual-architecture maintenance and publication](docs/release-maintenance.md)
+- [Vulnerability triage and publication hold](docs/vulnerability-triage.md)
 
 ## Implemented candidate outputs
 
@@ -176,11 +201,15 @@ runtime/
   pnpm-workspace.yaml
 policy/
   image-lock.json
+  license-policy.json
   native-arm64-lock.json
+  supply-chain-tools.json
+  vulnerability-allowlist.json
 scripts/
   prepare-local-builder.sh
   build-candidate.sh
   build-amd64-candidate.sh
+  check-supply-chain-policy.py
 tests/
   amd64-compose-contract.sh
   amd64-runtime.sh
@@ -190,6 +219,7 @@ tests/
   caddy-volume-init.sh
   arm64-runtime.sh
   dockerhub-workflow-contract.sh
+  supply-chain-policy.py
 assets/readme/
   hero.svg
 ```
@@ -197,9 +227,11 @@ assets/readme/
 The build workflow lives at `.github/workflows/build-arm64.yml`. Repository
 policy records both the rebuilt QEMU output and verified native GitHub output
 as candidate-only. Each new ARM64 or AMD64 bundle generates an
-environment-specific candidate lock;
-SBOM and separate provenance fields remain null. Every artifact is explicitly
-marked candidate-only and is not the complete release bundle described below.
+environment-specific candidate lock. The older local/native locks still have
+null SBOM and provenance fields and are now superseded by the runtime hardening.
+The Docker Hub workflow generates separately hashed Syft/CycloneDX SBOMs,
+Grype reports, license-policy results and BuildKit metadata for future
+candidates; these are candidate evidence, not signed registry attestations.
 
 ## Release boundary
 
