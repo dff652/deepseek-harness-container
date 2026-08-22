@@ -85,6 +85,15 @@ forwarding, but that is still a proxy component, not direct DSH IP access.
 Direct raw-IP HTTP would weaken the entry controls or require patching DSH's
 loopback policy and is not accepted.
 
+Caddy is the current implementation baseline, not a permanent product
+dependency. [Gateway alternatives and lightweight relay decision](gateway-alternatives.md)
+maps the complete gateway contract to HAProxy, NGINX and Traefik, selects
+HAProxy for the first non-publishing PoC, and defines the substantially higher
+security gate for any project-owned relay. An alternative is acceptable only
+after it preserves the request-trust ordering, offline IP-certificate path,
+streaming behavior, negative exposure boundary and dual-architecture supply
+chain described here.
+
 ### Rejected defaults
 
 - DSH patched to `0.0.0.0` solely to cross a normal Compose bridge;

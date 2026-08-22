@@ -198,6 +198,11 @@ different network namespace. A same-namespace relay is still required; this
 project deliberately uses Caddy so multiple managed LAN devices get an
 authenticated HTTPS endpoint by IP while DSH keeps its upstream loopback trust
 boundary. Publishing raw DSH HTTP by IP is not the accepted alternative.
+Caddy is the current baseline, not an irreplaceable component: the
+[gateway-alternatives decision](docs/gateway-alternatives.md) selects HAProxy
+for the first isolated comparison, keeps NGINX and Traefik as alternatives,
+and defines why a project-owned lightweight relay is a last resort rather than
+the immediate response to the current Caddy publication hold.
 
 ## Documentation
 
@@ -209,6 +214,7 @@ boundary. Publishing raw DSH HTTP by IP is not the accepted alternative.
 - [Security policy](SECURITY.md)
 - [Dual-architecture maintenance and publication](docs/release-maintenance.md)
 - [Vulnerability triage and publication hold](docs/vulnerability-triage.md)
+- [Gateway alternatives and lightweight relay decision](docs/gateway-alternatives.md)
 
 ## Implemented candidate outputs
 
