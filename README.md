@@ -10,9 +10,9 @@ development capability boundary.
 
 ## Project status
 
-**Local AMD64, QEMU ARM64 and Distroless-source native GitHub ARM64 candidates
+**Local and GitHub-native AMD64 plus QEMU and GitHub-native ARM64 candidates
 built — the local images passed the shared runtime, native-module, Compose and
-Caddy HTTPS gateway acceptance; the native ARM candidate passed its
+Caddy HTTPS gateway acceptance; both GitHub-native candidates passed their
 build/runtime/bundle gates. No container image has been published, released or
 deployed.**
 
@@ -38,6 +38,11 @@ native modules, loopback Web, read-only root and UID 10001 checks passed. Its
 full ARM Compose/Caddy appliance remains pending. The exact AMD64 image passed
 a fresh-volume Compose cold start plus trusted-CA 401/200,
 bad-Host 421, bad-Origin 403 and no-3080 checks.
+GitHub [native AMD64 run 32559547026](https://github.com/dff652/deepseek-harness-container/actions/runs/32559547026)
+rebuilt source commit `6bed724…`, producing manifest `sha256:c6e6afd4…` and
+config `sha256:cf24849c…`. Every bundle checksum and the independently derived
+OCI/archive digests passed; the lock records the exact run and contains no
+ARM/QEMU-only evidence. Its SBOM/provenance fields remain null.
 GitHub [native ARM run 32557974575](https://github.com/dff652/deepseek-harness-container/actions/runs/32557974575)
 then rebuilt Distroless runtime commit `feb4469…`, producing manifest
 `sha256:cbc3de07…` and config `sha256:7cc4826b…`. All workflow steps and every
@@ -56,7 +61,7 @@ The candidate targets this exact tuple:
 
 | Component | Candidate pin | State |
 |---|---:|---|
-| DeepSeek Harness | `0.1.1-rc.1` | AMD64 native, ARM64 QEMU and GitHub native ARM candidates passed; production ARM pending |
+| DeepSeek Harness | `0.1.1-rc.1` | AMD64 local/GitHub native plus ARM64 QEMU/GitHub native candidates passed; production ARM pending |
 | DSH tag/commit | `dsh-v0.1.1-rc.1` / `528c682e061696f5a160f363f236ecbf53cbd006` | Verified upstream identity |
 | Node.js | `24.19.0` | Bookworm build image plus Distroless Debian 13 production runtime locked per architecture |
 | pnpm | `11.7.0` | Locked with Corepack integrity |
@@ -93,7 +98,10 @@ native-module and Web smoke before packaging.
 `.github/workflows/build-amd64.yml` provides the corresponding GitHub-hosted
 native AMD64 build/runtime/bundle evidence without registry credentials or
 image publication. It is separate from the manual Docker Hub publication
-workflow.
+workflow. Native run
+[32559547026](https://github.com/dff652/deepseek-harness-container/actions/runs/32559547026)
+passed these gates for source commit `6bed724…`; the downloaded artifact and
+its internal checksums were independently verified.
 
 The ARM64 paths remain separate evidence levels:
 
@@ -245,8 +253,8 @@ and native GitHub outputs as candidate-only. Each new ARM64 or AMD64 bundle
 generates an environment-specific candidate lock. `image-lock.json` records the
 current Distroless QEMU output; `native-arm64-lock.json` preserves the earlier
 hardened native run. The latest Distroless-source native lock is retained in run
-`32557974575`. These candidate locks deliberately retain null SBOM/provenance
-fields.
+`32557974575`; the latest native AMD64 lock is retained in run `32559547026`.
+These candidate locks deliberately retain null SBOM/provenance fields.
 The Docker Hub workflow generates separately hashed Syft/CycloneDX SBOMs,
 Grype reports, license-policy results and BuildKit metadata for future
 candidates; these are candidate evidence, not signed registry attestations.

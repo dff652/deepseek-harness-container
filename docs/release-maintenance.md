@@ -150,6 +150,13 @@ passed build, runtime, native-module and bundle-hash gates for source commit
 verified; SBOM/provenance remain null, so the run does not satisfy or bypass
 the publication policy.
 
+Native AMD64 run
+[32559547026](https://github.com/dff652/deepseek-harness-container/actions/runs/32559547026)
+passed the same non-publishing build/runtime/bundle boundary for source commit
+`6bed724…`. Its downloaded checksums, OCI manifest/config, DSH/Caddy archive
+hashes, architecture and candidate lock were independently verified. It also
+retains null SBOM/provenance and does not reduce the vulnerability hold.
+
 Against Grype DB built 2026-08-21, the historical strict empty-exception scan
 found 24 unapproved High/Critical DSH/Bookworm matches and 35 Caddy matches.
 The 2026-08-22 committed Distroless remediation reduced DSH to four matches on

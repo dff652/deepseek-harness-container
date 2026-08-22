@@ -148,6 +148,15 @@ push an image, create a manifest list, sign or release. Its evidence therefore
 will close the GitHub-native AMD64 regression gap only after a successful run,
 without granting the separate Docker Hub publication workflow any authority.
 
+Native run
+[32559547026](https://github.com/dff652/deepseek-harness-container/actions/runs/32559547026)
+successfully built and smoked source commit `6bed724…`. The downloaded bundle
+verified every `SHA256SUMS` entry and resolved exactly one Linux AMD64 manifest
+(`sha256:c6e6afd4…`) with config `sha256:cf24849c…`; its DSH and Caddy archive
+hashes also matched the generated lock. The lock contains no ARM/QEMU-only
+fields and keeps SBOM/provenance null. This closes only the GitHub-native AMD64
+build/runtime/bundle evidence gap, not the publication gate.
+
 ## GHCR and offline artifacts
 
 Private GHCR is useful as an online build-zone registry, but a disconnected
