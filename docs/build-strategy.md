@@ -1,4 +1,4 @@
-# ARM64 build strategy
+# Dual-architecture build strategy
 
 ## Decision
 
@@ -91,6 +91,15 @@ were independently rehashed. The committed
 Its SBOM/provenance fields remain null, so this is native build/runtime evidence,
 not supply-chain approval or production-host acceptance.
 
+Distroless runtime-source run
+[32557974575](https://github.com/dff652/deepseek-harness-container/actions/runs/32557974575)
+then rebuilt commit `feb4469…` with the pinned Distroless runtime. All native
+build, runtime, static-contract and bundle-upload steps passed. The downloaded
+bundle's `SHA256SUMS` verified every member; its generated lock records manifest
+`sha256:cbc3de07…`, config `sha256:7cc4826b…`, the exact source/run and no
+QEMU-only binfmt/probe claims. SBOM and provenance remain null, so publication
+and production-host acceptance remain blocked.
+
 The 14 GiB disk is an acceptance constraint. The workflow must record image,
 cache and archive sizes and fail clearly if the dependency closure plus export
 does not fit. A larger runner is not silently selected to hide that failure.
@@ -119,10 +128,25 @@ Distroless Node 24 runtime children. AMD64-native and ARM64-QEMU images passed
 the network-disabled module/Web, read-only-root, shell-absence and UID 10001
 checks. The new QEMU image records image `sha256:16cd5261…` and config
 `sha256:a6cb08c0…`; a same-tool scan reduced DSH High/Critical matches from 24
-to 4 on both architectures. The earlier trusted-CA Compose/Caddy acceptance
-and hardened native GitHub ARM64 run remain historical evidence and must be
-rerun for this exact source before release. Production ARM acceptance remains
-pending.
+to 4 on both architectures. Native GitHub ARM64 run `32557974575` now covers
+this exact source's build/runtime/bundle boundary. The trusted-CA ARM64
+Compose/Caddy test and all disconnected production-host acceptance still must
+be run on the target ARM host before release.
+
+## GitHub native AMD64
+
+`.github/workflows/build-amd64.yml` is the non-publishing native counterpart to
+the ARM64 workflow. Pull requests run static contracts plus the pinned AMD64
+build/runtime smoke without secrets. An owner-triggered `workflow_dispatch`
+may additionally assemble a 14-day offline candidate artifact containing the
+exact DSH and Caddy archives, Compose/Caddy inputs, runner/build inspection,
+environment-specific candidate lock and `SHA256SUMS`.
+
+This workflow uses `ubuntu-24.04`, `contents: read`, pinned Action and BuildKit
+identities and exact AMD64 child manifests. It does not log in to a registry,
+push an image, create a manifest list, sign or release. Its evidence therefore
+will close the GitHub-native AMD64 regression gap only after a successful run,
+without granting the separate Docker Hub publication workflow any authority.
 
 ## GHCR and offline artifacts
 

@@ -10,20 +10,21 @@ development capability boundary.
 
 ## Project status
 
-**Local AMD64, QEMU ARM64 and native GitHub ARM64 candidates built — the local
-images passed the shared runtime, native-module, Compose and Caddy HTTPS gateway
-acceptance; the native ARM candidate passed its build/runtime/bundle gates. No
-container image has been published, released or deployed.**
+**Local AMD64, QEMU ARM64 and Distroless-source native GitHub ARM64 candidates
+built — the local images passed the shared runtime, native-module, Compose and
+Caddy HTTPS gateway acceptance; the native ARM candidate passed its
+build/runtime/bundle gates. No container image has been published, released or
+deployed.**
 
-The older local candidates remain historical evidence. A new remediation
-worktree uses the exact Node `24.19.0-bookworm-slim` image only as the build
+The older local candidates remain historical evidence. The current source uses
+the exact Node `24.19.0-bookworm-slim` image only as the build
 stage and copies DSH into pinned, shell-less Distroless Node 24 Debian 13
 runtime children. AMD64-native and ARM64-QEMU images passed the
 network-disabled runtime/native-module boundary. A same-tool/database scan
 reduced DSH High/Critical matches from 24 to 4 on both architectures; the
 pinned Caddy image still has 35 AMD64 matches. The Docker Hub workflow
-therefore remains fail-closed; this is not yet a publishable image or native
-ARM acceptance.
+therefore remains fail-closed; this is not yet a publishable image or
+production-ARM acceptance.
 
 The earlier corrected amd64 candidate records DSH image ID `sha256:5a7c4f1a…` and OCI
 config digest `sha256:5e82d2be…`; its runtime smoke
@@ -34,14 +35,15 @@ local appliance run used the exported Caddy root CA (not `-k`) and proved
 The latest shell-less QEMU ARM64 candidate records image ID
 `sha256:16cd5261…` and config digest `sha256:a6cb08c0…`; its DSH version,
 native modules, loopback Web, read-only root and UID 10001 checks passed. Its
-full Compose/Caddy appliance and native-ARM reruns remain pending. The exact
-AMD64 image passed a fresh-volume Compose cold start plus trusted-CA 401/200,
+full ARM Compose/Caddy appliance remains pending. The exact AMD64 image passed
+a fresh-volume Compose cold start plus trusted-CA 401/200,
 bad-Host 421, bad-Origin 403 and no-3080 checks.
-GitHub [native ARM run 32553165653](https://github.com/dff652/deepseek-harness-container/actions/runs/32553165653)
-then rebuilt hardened source commit `84a8e5d…`, producing manifest
-`sha256:716a9e62…` and config `sha256:90145b53…`. Every downloaded bundle hash
-passed and the generated candidate lock matched the run. Real disconnected
-production-ARM acceptance remains open.
+GitHub [native ARM run 32557974575](https://github.com/dff652/deepseek-harness-container/actions/runs/32557974575)
+then rebuilt Distroless runtime commit `feb4469…`, producing manifest
+`sha256:cbc3de07…` and config `sha256:7cc4826b…`. All workflow steps and every
+downloaded bundle hash passed; the generated candidate lock records that exact
+source/run and removes QEMU-only evidence. Its SBOM/provenance fields remain
+null. Real disconnected production-ARM acceptance remains open.
 
 This repository was created to separate the OCI/Compose release lifecycle from
 the configuration-only plugin packages in the sibling
@@ -87,6 +89,11 @@ This writes a candidate-only directory under `artifacts/` containing the DSH
 and Caddy Docker archives, Compose files, environment-specific image lock,
 inspect/build metadata and `SHA256SUMS`. It also runs the network-disabled
 native-module and Web smoke before packaging.
+
+`.github/workflows/build-amd64.yml` provides the corresponding GitHub-hosted
+native AMD64 build/runtime/bundle evidence without registry credentials or
+image publication. It is separate from the manual Docker Hub publication
+workflow.
 
 The ARM64 paths remain separate evidence levels:
 
@@ -188,7 +195,7 @@ boundary. Publishing raw DSH HTTP by IP is not the accepted alternative.
 
 - [Architecture and product boundaries](docs/architecture.md)
 - [Offline ARM64 delivery SOP](docs/offline-airgap.md)
-- [Local QEMU and GitHub ARM64 build strategy](docs/build-strategy.md)
+- [Local and GitHub dual-architecture build strategy](docs/build-strategy.md)
 - [Agent development capability boundary](docs/agent-development-boundary.md)
 - [Python SDK headless deployment evaluation](docs/python-sdk-evaluation.md)
 - [Security policy](SECURITY.md)
@@ -222,6 +229,7 @@ tests/
   amd64-runtime.sh
   compose-contract.sh
   negative-exposure.sh
+  amd64-workflow-contract.sh
   native-workflow-contract.sh
   caddy-volume-init.sh
   arm64-runtime.sh
@@ -231,12 +239,14 @@ assets/readme/
   hero.svg
 ```
 
-The build workflow lives at `.github/workflows/build-arm64.yml`. Repository
-policy records both the rebuilt QEMU output and verified native GitHub output
-as candidate-only. Each new ARM64 or AMD64 bundle generates an
-environment-specific candidate lock. The older local/QEMU lock is superseded
-by runtime hardening; `native-arm64-lock.json` records the refreshed hardened
-native run but deliberately retains null SBOM/provenance fields.
+The non-publishing build workflows live at `.github/workflows/build-amd64.yml`
+and `.github/workflows/build-arm64.yml`. Repository policy records local/QEMU
+and native GitHub outputs as candidate-only. Each new ARM64 or AMD64 bundle
+generates an environment-specific candidate lock. `image-lock.json` records the
+current Distroless QEMU output; `native-arm64-lock.json` preserves the earlier
+hardened native run. The latest Distroless-source native lock is retained in run
+`32557974575`. These candidate locks deliberately retain null SBOM/provenance
+fields.
 The Docker Hub workflow generates separately hashed Syft/CycloneDX SBOMs,
 Grype reports, license-policy results and BuildKit metadata for future
 candidates; these are candidate evidence, not signed registry attestations.

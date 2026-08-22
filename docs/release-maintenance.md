@@ -83,6 +83,20 @@ architectures from one commit and publish a new three-tag set. Deleting the
 partial remote tag is a separate destructive registry operation and is not the
 default retry path.
 
+## GitHub Actions build evidence
+
+The build-only workflows are independent of registry publication:
+
+- `.github/workflows/build-amd64.yml` uses native `ubuntu-24.04`;
+- `.github/workflows/build-arm64.yml` uses native `ubuntu-24.04-arm`.
+
+Both run on pull requests without secrets and support an owner-triggered manual
+candidate bundle. They build and smoke only their architecture, use
+`contents: read`, upload temporary evidence only for `workflow_dispatch`, and
+never log in, push, sign, create a registry manifest or release. A successful
+build-only run does not satisfy vulnerability, SBOM, provenance, production ARM
+or publication gates.
+
 ## GitHub Actions publication
 
 `.github/workflows/publish-dockerhub-candidate.yml` is manual-only and accepts
@@ -129,15 +143,16 @@ changing the JSON severity list cannot weaken that invariant.
 
 ### Current publication hold (2026-08-22)
 
-Hardened native ARM64 run
-[32553165653](https://github.com/dff652/deepseek-harness-container/actions/runs/32553165653)
+Distroless runtime-source native ARM64 run
+[32557974575](https://github.com/dff652/deepseek-harness-container/actions/runs/32557974575)
 passed build, runtime, native-module and bundle-hash gates for source commit
-`84a8e5d…`. Its candidate lock still records null SBOM/provenance, so the run
-does not satisfy or bypass the publication policy.
+`feb4469…`. Its downloaded lock and every bundle checksum were independently
+verified; SBOM/provenance remain null, so the run does not satisfy or bypass
+the publication policy.
 
 Against Grype DB built 2026-08-21, the historical strict empty-exception scan
 found 24 unapproved High/Critical DSH/Bookworm matches and 35 Caddy matches.
-The 2026-08-22 Distroless remediation worktree reduced DSH to four matches on
+The 2026-08-22 committed Distroless remediation reduced DSH to four matches on
 both AMD64-native and ARM64-QEMU images, while the Caddy AMD64 snapshot remains
 35. The current comparable AMD64 appliance total is therefore 39 match records
 covering 34 unique advisory IDs. Sixteen Caddy matches have a scanner-provided
