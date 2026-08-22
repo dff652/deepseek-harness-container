@@ -1,0 +1,117 @@
+name: dsh-container-haproxy-poc
+
+# Isolated HAProxy alternative.  Do not combine this file with compose.yaml:
+# it deliberately defines a second project so the Caddy default remains
+# untouched.  Render haproxy.cfg with scripts/render-haproxy-config.py and
+# provide a test/deployment IP-SAN PEM via HAPROXY_CONFIG/HAPROXY_CERT.
+# Immutable Docker Official Image index:
+# haproxy:3.4.3-alpine3.24@sha256:fb87fc81943143b9acaea7442973e6ba654035fff76ffe7af6829dd1bcb0f7a5.
+# Compose requires one of the exact children below for offline use.  Its
+# resolved children at the time of this PoC are:
+#   AMD64 child: sha256:c7f5037a567378929d0aba734eb78b73497209c72456519420ce5e68a42d60ac
+#   ARM64 child: sha256:0fe6e31a91ad42440ceba4419694189673f9773f90b985bd883db0054a7c5259
+services:
+  dsh:
+    image: ${DSH_IMAGE:?set DSH_IMAGE to the exact offline DSH image reference}
+    pull_policy: never
+    platform: ${DSH_PLATFORM:-linux/arm64}
+    command: ["web", "--host", "127.0.0.1", "--port", "3080", "--no-open"]
+    user: "10001:10001"
+    init: true
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=256m
+    environment:
+      DSH_HOME: /var/lib/dsh
+      HOME: /var/lib/dsh
+      NODE_ENV: production
+    volumes:
+      - dsh-home:/var/lib/dsh
+      - ${DSH_WORKSPACE:?set DSH_WORKSPACE to one approved absolute workspace}:/workspace:rw
+    ports:
+      - "${DSH_LAN_IP:?set DSH_LAN_IP}:${DSH_HTTPS_PORT:-443}:443/tcp"
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - >-
+          fetch('http://127.0.0.1:3080/').then((r) =>
+          process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))
+      interval: 10s
+      timeout: 5s
+      start_period: 20s
+      retries: 6
+    restart: unless-stopped
+
+  haproxy-init:
+    # The deployment supplies config and the IP-SAN PEM read-only.  This
+    # narrow root one-shot stages them into a named volume owned by UID 99 so
+    # the long-running process never needs host-readable private-key modes.
+    image: ${HAPROXY_IMAGE:?set HAPROXY_IMAGE to the exact architecture child digest}
+    pull_policy: never
+    platform: ${DSH_PLATFORM:-linux/arm64}
+    network_mode: none
+    user: "0:0"
+    entrypoint: ["/bin/sh", "-eu", "-c"]
+    command:
+      - >-
+        test -s /input/haproxy.cfg && test -s /input/tls.pem &&
+        rm -f /run/haproxy/haproxy.cfg /run/haproxy/tls.pem &&
+        cp /input/haproxy.cfg /run/haproxy/haproxy.cfg &&
+        cp /input/tls.pem /run/haproxy/tls.pem &&
+        chown 99:99 /run/haproxy/haproxy.cfg /run/haproxy/tls.pem &&
+        chmod 0440 /run/haproxy/haproxy.cfg /run/haproxy/tls.pem
+    read_only: true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      # External config/key files are intentionally 0600.  This one-shot
+      # reader needs DAC_OVERRIDE only to stage them, and the long-running
+      # HAProxy process never receives it.
+      - DAC_OVERRIDE
+      - FOWNER
+    security_opt:
+      - no-new-privileges:true
+    volumes:
+      - ${HAPROXY_CONFIG:?render HAProxy config and set HAPROXY_CONFIG}:/input/haproxy.cfg:ro
+      - ${HAPROXY_CERT:?create an IP-SAN PEM and set HAPROXY_CERT}:/input/tls.pem:ro
+      - haproxy-runtime:/run/haproxy
+    restart: "no"
+
+  haproxy:
+    image: ${HAPROXY_IMAGE:?set HAPROXY_IMAGE to the exact architecture child digest}
+    pull_policy: never
+    platform: ${DSH_PLATFORM:-linux/arm64}
+    network_mode: service:dsh
+    depends_on:
+      dsh:
+        condition: service_healthy
+      haproxy-init:
+        condition: service_completed_successfully
+    user: "99:99"
+    init: true
+    read_only: true
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=64m
+    volumes:
+      - haproxy-runtime:/run/haproxy:ro
+    # The official entrypoint adds `haproxy -W -db` when the command starts
+    # with an option. Keep the effective argv single and auditable.
+    command: ["-f", "/run/haproxy/haproxy.cfg"]
+    restart: unless-stopped
+
+volumes:
+  dsh-home:
+  haproxy-runtime:

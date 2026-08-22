@@ -1,0 +1,67 @@
+# HAProxy 3.4 appliance PoC template.
+#
+# This file is intentionally a template.  Render it with
+# scripts/render-haproxy-config.py using deployment-owned values.  The
+# password hash and the expected external authority never belong in Git.
+#
+# The generated file is consumed by the official HAProxy image.  The
+# certificate PEM is mounted separately at /run/haproxy/tls.pem.
+
+global
+	# Keep the master process in the foreground; the image entrypoint also
+	# supplies -W -db for normal operation.
+	log stdout format raw local0
+	maxconn 256
+	zero-warning
+
+defaults
+	mode http
+	log global
+	option httplog
+	timeout connect 5s
+	timeout client 1h
+	timeout client-fin 60s
+	timeout server 1h
+	timeout tunnel 1h
+	timeout http-request 10s
+	timeout http-keep-alive 30s
+
+userlist dsh-users
+	user __DSH_USERNAME__ password __DSH_PASSWORD_HASH__
+
+frontend dsh_https
+	# One PEM file contains the deployment-owned IP-SAN certificate and key.
+	# With one certificate and no strict-sni, it is also HAProxy's default for
+	# clients that omit SNI (for example curl https://<literal-ip>/).
+	bind :443 ssl crt /run/haproxy/tls.pem alpn h2,http/1.1
+
+	# Permit exactly the normal HTTPS Host forms: the literal IPv4 address or
+	# that address with the default :443 port. Do not normalize arbitrary ports
+	# away; repeated ACL definitions with one name are an OR in HAProxy.
+	acl approved_host hdr(host) -m str __DSH_HOST_AUTHORITY__
+	acl approved_host hdr(host) -m str __DSH_HOST_AUTHORITY__:443
+	acl cross_site hdr(Sec-Fetch-Site) -i cross-site
+	acl has_origin hdr(Origin) -m found
+	acl approved_origin hdr(Origin) -m str https://__DSH_HOST_AUTHORITY__
+	acl auth_ok http_auth(dsh-users)
+
+	# Keep all external checks ahead of upstream header adaptation.  These
+	# return rules are terminal for the current request.
+	http-request return status 421 content-type text/plain lf-string "unapproved Host\n" unless approved_host
+	http-request return status 403 content-type text/plain lf-string "cross-site request denied\n" if cross_site
+	http-request return status 403 content-type text/plain lf-string "origin mismatch\n" if has_origin !approved_origin
+	http-request auth realm dsh unless auth_ok
+
+	# DSH is loopback-only in the shared network namespace.  Apply these
+	# changes only after the trust and Basic Auth gate above.
+	http-request set-header Host 127.0.0.1:3080
+	http-request del-header Origin
+	http-request del-header Sec-Fetch-Site
+
+	default_backend dsh_loopback
+
+backend dsh_loopback
+	# HAProxy's HTTP mode preserves Upgrade/WebSocket and streaming responses;
+	# timeout tunnel keeps upgraded connections alive and timeout server leaves
+	# SSE/long responses open for the appliance's one-hour session window.
+	server dsh 127.0.0.1:3080 check

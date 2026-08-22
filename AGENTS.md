@@ -16,8 +16,9 @@ or the plugin packages maintained in sibling repositories.
 
 ## Security defaults
 
-- DSH listens only on container loopback. Caddy is the only LAN entry and
-  shares the DSH network namespace.
+- DSH listens only on container loopback. Caddy is the default LAN entry and
+  shares the DSH network namespace. An alternative gateway must remain an
+  isolated non-publishing profile until it passes the same complete contract.
 - Never publish DSH port 3080, use host networking, run privileged, mount the
   Docker socket, mount the host root/home, or grant `SYS_ADMIN`/`NET_ADMIN`.
 - Run DSH as a fixed non-root UID/GID with a read-only root filesystem. Mount

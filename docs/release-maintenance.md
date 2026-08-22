@@ -169,6 +169,15 @@ and the GitHub Docker Hub secrets remain absent. Follow the
 [vulnerability triage runbook](vulnerability-triage.md) before any exact owned
 and expiring exception is considered.
 
+The isolated HAProxy `3.4.3-alpine3.24` comparison is not part of this Docker
+Hub workflow. Its exact AMD64 and ARM64 children pass local functional tests
+and each scan at two High records, so the comparable DSH+HAProxy count is six
+records per architecture. It still fails the same empty-exception policy and
+lacks native retained supply-chain plus real production-ARM evidence. Adopting
+it would require an explicit gateway decision followed by architecture-specific
+offline archives, SBOM/provenance/license integration and publication-workflow
+changes; local PoC success must not silently alter the Caddy release track.
+
 Repository creation, GitHub push, Docker Hub publication, formal release,
 signing and production deployment remain independent auditable transitions.
 

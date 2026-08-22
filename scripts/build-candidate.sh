@@ -9,6 +9,7 @@ readonly IMAGE_TAG='local/dsh:0.1.1-rc.1-arm64'
 readonly NODE_BASE_REF='node:24.19.0-bookworm-slim@sha256:c133efe216ffb6e785ed9a8be55a29fcb86775e8008ae0a9f0ed6af4f175bb03'
 readonly NODE_RUNTIME_REF='gcr.io/distroless/nodejs24-debian13@sha256:8f5b4fe36a991614a46469e4ec06f65838a2bc22d61f560aac9d40ae62e9ac5a'
 readonly CADDY_REF='caddy:2.11.4@sha256:1172d4213087d3fc30bafc7ff2c2896180eb0c41ff7f75f315568fb36cabdcba'
+readonly CADDY_ARCHIVE_TAG='caddy:dsh-offline-2.11.4-arm64-1172d4213087'
 readonly ARTIFACT_ROOT="$REPO_ROOT/artifacts"
 
 test -f /proc/sys/fs/binfmt_misc/qemu-aarch64
@@ -45,7 +46,8 @@ docker image inspect "$IMAGE_TAG" > "$ARTIFACT_DIR/dsh-image-inspect.json"
 
 docker pull --platform linux/arm64 "$CADDY_REF"
 test "$(docker image inspect "$CADDY_REF" --format '{{.Architecture}}')" = arm64
-docker image save --output "$ARTIFACT_DIR/caddy-2.11.4-arm64.tar" "$CADDY_REF"
+"$REPO_ROOT/scripts/save-pinned-image.sh" "$CADDY_REF" linux/arm64 \
+  "$CADDY_ARCHIVE_TAG" "$ARTIFACT_DIR/caddy-2.11.4-arm64.tar"
 docker image inspect "$CADDY_REF" > "$ARTIFACT_DIR/caddy-image-inspect.json"
 
 dsh_image_id=$(docker image inspect "$IMAGE_TAG" --format '{{.Id}}')

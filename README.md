@@ -26,6 +26,17 @@ pinned Caddy image still has 35 AMD64 matches. The Docker Hub workflow
 therefore remains fail-closed; this is not yet a publishable image or
 production-ARM acceptance.
 
+An isolated HAProxy `3.4.3-alpine3.24` alternative now passes the same local
+gateway contract on native AMD64 and QEMU ARM64, including real DSH Compose
+startup, trusted IP-SAN TLS/no-SNI, 401/200/421/403, upstream header removal,
+WebSocket, SSE and no published 3080. Both exact HAProxy children scan at two
+High records (one advisory) each, making the comparable DSH+HAProxy appliance
+six records per architecture. That is an improvement, not a release approval:
+native production ARM, formal retained supply-chain evidence and the empty-
+exception policy still block adoption. Caddy remains the default profile.
+The native AMD64/ARM64 build-only workflows now contain this isolated test,
+but that workflow change has not yet been pushed or run.
+
 The earlier corrected amd64 candidate records DSH image ID `sha256:5a7c4f1a…` and OCI
 config digest `sha256:5e82d2be…`; its runtime smoke
 also loads Koffi, node-pty, Landlock and Sharp with networking disabled. The
@@ -66,6 +77,7 @@ The candidate targets this exact tuple:
 | Node.js | `24.19.0` | Bookworm build image plus Distroless Debian 13 production runtime locked per architecture |
 | pnpm | `11.7.0` | Locked with Corepack integrity |
 | Caddy | `2.11.4` | OCI index plus AMD64/ARM64 child digests locked |
+| HAProxy alternative | `3.4.3-alpine3.24` | isolated exact-child AMD64/ARM64 PoC passed locally; not adopted |
 | Production target | `linux/arm64`, glibc | QEMU and GitHub native candidates passed; production ARM pending |
 | Local test target | `linux/amd64`, glibc | native runtime and Compose/Caddy acceptance passed |
 
@@ -157,9 +169,9 @@ snapshot, and the remediation/exception boundary.
 1. Keep this as an independent public project with no deployment secrets. It owns Dockerfiles,
    Compose, Caddy, image locks, SBOM/provenance and offline bundles; it does not
    own DSH source, plugin logic or provider business logic.
-2. Keep DSH on container loopback. A Caddy sidecar joins the DSH network
-   namespace with `network_mode: service:dsh`; only the selected host IP on
-   port 443 is published.
+2. Keep DSH on container loopback. The selected gateway sidecar joins the DSH
+   network namespace with `network_mode: service:dsh`; only the selected host
+   IP on port 443 is published. Caddy remains the default; HAProxy is isolated.
 3. Treat x86 Buildx/QEMU output as a candidate only. Production acceptance must
    run on a real ARM64 host with networking disconnected.
 4. Give an Agent explicit capabilities instead of “host escape”: one approved
@@ -199,8 +211,8 @@ project deliberately uses Caddy so multiple managed LAN devices get an
 authenticated HTTPS endpoint by IP while DSH keeps its upstream loopback trust
 boundary. Publishing raw DSH HTTP by IP is not the accepted alternative.
 Caddy is the current baseline, not an irreplaceable component: the
-[gateway-alternatives decision](docs/gateway-alternatives.md) selects HAProxy
-for the first isolated comparison, keeps NGINX and Traefik as alternatives,
+[gateway-alternatives decision](docs/gateway-alternatives.md) records the
+completed isolated HAProxy comparison, keeps NGINX and Traefik as alternatives,
 and defines why a project-owned lightweight relay is a last resort rather than
 the immediate response to the current Caddy publication hold.
 
@@ -215,6 +227,7 @@ the immediate response to the current Caddy publication hold.
 - [Dual-architecture maintenance and publication](docs/release-maintenance.md)
 - [Vulnerability triage and publication hold](docs/vulnerability-triage.md)
 - [Gateway alternatives and lightweight relay decision](docs/gateway-alternatives.md)
+- [HAProxy dual-architecture offline PoC](docs/haproxy-poc.md)
 
 ## Implemented candidate outputs
 
@@ -223,12 +236,16 @@ Dockerfile
 compose.yaml
 compose.amd64.yaml
 Caddyfile
+compose.haproxy.yaml
+haproxy/
+  haproxy.cfg.tmpl
 runtime/
   package.json
   pnpm-lock.yaml
   pnpm-workspace.yaml
 policy/
   image-lock.json
+  haproxy-poc-lock.json
   license-policy.json
   native-arm64-lock.json
   supply-chain-tools.json
@@ -238,6 +255,9 @@ scripts/
   build-candidate.sh
   build-amd64-candidate.sh
   check-supply-chain-policy.py
+  haproxy-test-pki.sh
+  render-haproxy-config.py
+  save-pinned-image.sh
 tests/
   amd64-compose-contract.sh
   amd64-runtime.sh
@@ -248,6 +268,10 @@ tests/
   caddy-volume-init.sh
   arm64-runtime.sh
   dockerhub-workflow-contract.sh
+  haproxy-contract.sh
+  haproxy-runtime.sh
+  haproxy-compose-runtime.sh
+  offline-image-archive.sh
   supply-chain-policy.py
 assets/readme/
   hero.svg
@@ -273,7 +297,8 @@ A successful image build is not a release. The first candidate must prove:
 - SBOM, provenance, license, vulnerability and secret gates;
 - disconnected `docker compose up --no-build --pull never`;
 - no published 3080 or dangerous host capability;
-- Caddy unauthenticated 401, authenticated 200 and trusted client certificate;
+- selected gateway unauthenticated 401, authenticated 200 and trusted client
+  certificate;
 - authenticated requests with malicious Host/Origin/cross-site metadata denied
   before loopback header adaptation;
 - real browser settings, model request and MCP tool call;

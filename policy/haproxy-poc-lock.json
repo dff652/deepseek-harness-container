@@ -1,0 +1,55 @@
+{
+  "schemaVersion": 1,
+  "status": "non-publishing-functional-poc",
+  "recordedAt": "2026-08-22",
+  "image": {
+    "repository": "docker.io/library/haproxy",
+    "version": "3.4.3-alpine3.24",
+    "indexDigest": "sha256:fb87fc81943143b9acaea7442973e6ba654035fff76ffe7af6829dd1bcb0f7a5",
+    "sourceRevision": "40955df2217f5cb77f861e709b239cedd43ff613",
+    "platforms": {
+      "linux/amd64": {
+        "manifestDigest": "sha256:c7f5037a567378929d0aba734eb78b73497209c72456519420ce5e68a42d60ac",
+        "configDigest": "sha256:cfd483e380dd0ab8ef1a6b54fbf4f665bf9c2c9bdb821c97f6f8a9ad731cd4a5",
+        "criticalMatches": 0,
+        "highMatches": 2,
+        "uniqueAdvisoryIds": [
+          "CVE-2026-14456"
+        ]
+      },
+      "linux/arm64": {
+        "manifestDigest": "sha256:0fe6e31a91ad42440ceba4419694189673f9773f90b985bd883db0054a7c5259",
+        "configDigest": "sha256:5d297f7ef0f6351a1c848101fcb2452cb3f1ae9bfa067f40e94032d499676ef0",
+        "criticalMatches": 0,
+        "highMatches": 2,
+        "uniqueAdvisoryIds": [
+          "CVE-2026-14456"
+        ]
+      }
+    }
+  },
+  "scanSnapshot": {
+    "syftVersion": "1.51.0",
+    "grypeVersion": "0.117.0",
+    "grypeDatabaseBuilt": "2026-08-21T06:17:24Z",
+    "rawEvidenceRetained": false,
+    "formalLicensePolicyStatus": "pending"
+  },
+  "findingReview": {
+    "CVE-2026-14456": {
+      "scannerSeverity": "High",
+      "upstreamSeverity": "Low",
+      "affectedPath": "OpenSSL QUIC server incoming channel queue",
+      "haproxyBuiltWithQuic": true,
+      "pocQuicListenerConfigured": false,
+      "decision": "pending-owner-review-no-exception"
+    }
+  },
+  "acceptance": {
+    "nativeAmd64Functional": "passed",
+    "qemuArm64Functional": "passed",
+    "nativeArm64Functional": "pending",
+    "disconnectedProductionArm": "pending",
+    "publicationPolicy": "blocked-unapproved-high-findings"
+  }
+}

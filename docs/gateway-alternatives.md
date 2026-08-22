@@ -11,16 +11,18 @@ are tested.
 The current order is:
 
 1. keep the locked Caddy appliance as the functional baseline;
-2. run an isolated HAProxy proof of concept against the same gateway contract;
-3. test NGINX only if HAProxy does not improve the complete security,
+2. retain the completed isolated HAProxy proof of concept as a
+   non-publishing candidate;
+3. test NGINX only if HAProxy cannot close the remaining complete security,
    operations and offline-delivery result;
 4. retain Traefik as a secondary option, not the first remediation candidate;
 5. consider a project-owned relay only if the mature alternatives fail the
    measured acceptance gates.
 
 No alternative in this document is adopted, release-approved or deployable
-yet. Exact image versions and AMD64/ARM64 digests are deliberately not selected
-until a PoC scans the actual images and exercises the complete appliance.
+yet. The HAProxy PoC has selected and tested exact AMD64/ARM64 image children,
+but its unresolved scan findings and missing native production-ARM evidence
+keep the default Caddy path unchanged.
 
 ## The contract an alternative must preserve
 
@@ -57,11 +59,11 @@ or shorter configuration does not compensate for a missing control.
 
 | Candidate | Relevant verified capability | Gap for this appliance | Current decision |
 | --- | --- | --- | --- |
-| HAProxy | Ordered HTTP ACL/actions, exact header matching, configurable deny status, Basic Auth userlists, request-header set/delete, PEM TLS certificates and WebSocket support | No Caddy-style embedded local CA; exact image footprint, ARM64 child and scan result remain unmeasured | **First PoC** |
+| HAProxy | Ordered HTTP ACL/actions, exact header matching, configurable deny status, Basic Auth userlists, request-header set/delete, PEM TLS certificates and WebSocket support; exact dual-architecture PoC passed locally | No Caddy-style embedded local CA; two unresolved High scan records per architecture; native target acceptance pending | **PoC passed functionally; adoption held** |
 | NGINX Open Source | TLS with a default server certificate, Basic Auth, `map`-based request classification, explicit response status, upstream header removal and documented WebSocket tunnelling | External PKI required; the exact trust policy is more verbose and sensitive to configuration ordering | **Second PoC if needed** |
 | Traefik Proxy | File-only configuration, Host/Header/HeaderRegexp rules with negation, BasicAuth, request-header removal, user-supplied TLS certificates and a default certificate for no-SNI clients | Exact 421/403 responses require extra router/error-service design; it is another Go proxy, so it may retain the class of compiled Go findings being investigated | **Viable, lower priority** |
 
-HAProxy is the best first comparison because its ordered ACL and
+HAProxy was the best first comparison because its ordered ACL and
 `http-request` model maps directly onto the existing gate. Its official
 configuration manual documents declaration-order evaluation, `hdr(Host)`,
 Basic Auth through `http_auth`, `deny` with a chosen status, `set-header`,
@@ -86,9 +88,11 @@ unreviewed bypass. Because Traefik is also implemented in Go, it is not the
 preferred experiment for determining whether moving away from Caddy reduces
 the remaining compiled-Go findings.
 
-Official references used for this assessment:
+Official references used for this assessment and PoC:
 
-- [HAProxy 3.2 configuration manual](https://docs.haproxy.org/3.2/configuration.html)
+- [HAProxy 3.4 configuration manual](https://docs.haproxy.org/3.4/configuration.html),
+  [management/config validation](https://docs.haproxy.org/3.4/management.html),
+  [Docker Official Image record](https://github.com/docker-library/official-images/blob/master/library/haproxy)
   and [HAProxy license](https://github.com/haproxy/haproxy/blob/master/LICENSE);
 - [NGINX Basic Auth](https://nginx.org/en/docs/http/ngx_http_auth_basic_module.html),
   [TLS](https://nginx.org/en/docs/http/ngx_http_ssl_module.html),
@@ -175,25 +179,40 @@ failed the same measured contract. Its minimum gate is:
 Until those gates are warranted and funded, a custom relay would exchange a
 known upstream dependency for a larger project-owned security burden.
 
-## Next PoC and decision gate
+## Completed PoC and decision gate
 
-The next authorized implementation experiment should remain non-publishing:
+The 2026-08-22 non-publishing PoC selected Docker Official Image
+`haproxy:3.4.3-alpine3.24` at index
+`sha256:fb87fc81943143b9acaea7442973e6ba654035fff76ffe7af6829dd1bcb0f7a5`,
+with exact AMD64 child `sha256:c7f5037a…` and ARM64 child
+`sha256:0fe6e31a…`. The isolated Compose profile leaves `compose.yaml` and the
+default Caddy service unchanged.
 
-1. select one maintained HAProxy release and resolve its official multi-arch
-   index plus exact AMD64 and ARM64 child digests;
-2. generate disposable test-only CA and IP-SAN material outside the image;
-3. add an isolated Compose override and HAProxy configuration without changing
-   the default Caddy path;
-4. run configuration validation and the existing 401/200/421/403/no-3080
-   contract, then add no-SNI, cross-site Fetch Metadata, upstream-header,
-   WebSocket and SSE checks;
-5. scan both actual architecture images with the repository-pinned Syft/Grype
-   database and review their licenses and package closure;
-6. compare the complete result with the current official Caddy and disposable
-   Distroless-Caddy snapshots.
+Native AMD64 and QEMU ARM64 tests passed non-root/read-only startup, exact
+Host and Origin policy, cross-site rejection, trusted IP-SAN TLS with and
+without SNI, Basic Auth 401/200, upstream-header removal, WebSocket, SSE and
+no published 3080. Full Compose tests using the exact DSH AMD64 and ARM64
+images also passed. See [the offline PoC runbook](haproxy-poc.md) for exact
+digests, commands and evidence boundaries.
+
+Both native build-only workflows now contain the isolated tests, but the
+workflow change is unpushed and has no GitHub run evidence yet. It must not be
+described as a native HAProxy pass until a source-specific run succeeds.
+
+Actual-image scans with Syft `1.51.0`, Grype `0.117.0` and the database built
+`2026-08-21T06:17:24Z` found two High records on each HAProxy child, both for
+`CVE-2026-14456` in `libcrypto3` and `libssl3`. Combined with DSH's four
+records, the comparison is six records per architecture: lower than the
+official Caddy and Distroless-Caddy snapshots, but not zero. The official
+HAProxy Alpine image also retains a shell/package manager and is not
+Distroless.
 
 Adoption requires an improvement in the whole appliance, not merely a lower
 scanner count: exact behavioral parity, simpler or acceptable offline PKI,
 maintainable dual-architecture delivery, and zero unapproved High/Critical
-findings under the existing fail-closed policy. Commit, push, image
-publication, release and production deployment remain separate approvals.
+findings under the existing fail-closed policy. The remaining HAProxy work is
+native retained supply-chain evidence, real disconnected ARM/browser/model/MCP
+and cold-boot acceptance, then an explicit gateway-selection decision. NGINX
+or a custom relay is not justified while HAProxy remains a viable held
+candidate. Commit, push, image publication, release and production deployment
+remain separate approvals.

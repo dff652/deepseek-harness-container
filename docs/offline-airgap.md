@@ -120,10 +120,20 @@ image-lock.json 在发布前必须包含真实的 DSH/Node/pnpm/Caddy/base-image
 
     # 生成离线传输包（仅针对 image-lock 中已经验收的镜像）
     docker save <dsh-image-ref> -o images/dsh-0.1.1-rc.1-arm64.tar
-    docker save <caddy-image-ref> -o images/caddy-2.11.4-arm64.tar
+    CADDY_REF='caddy:2.11.4@sha256:1172d4213087d3fc30bafc7ff2c2896180eb0c41ff7f75f315568fb36cabdcba'
+    CADDY_ARCHIVE_TAG='caddy:dsh-offline-2.11.4-arm64-1172d4213087'
+    scripts/save-pinned-image.sh "$CADDY_REF" linux/arm64 \
+      "$CADDY_ARCHIVE_TAG" images/caddy-2.11.4-arm64.tar
     sha256sum images/*.tar compose.yaml Caddyfile image-lock.json > SHA256SUMS
 
-docker save 只保存镜像层，不保存卷、凭据、Caddy 内部 CA 私钥或 DSH 工作区。所有这些状态必须按部署策略在目标机初始化或由受控备份恢复。
+禁止直接对 `name:tag@child-digest` 执行 `docker save`：这种归档可能写出
+`RepoTags:null`，在全新断网 daemon 上 `docker load` 后，Compose 的
+digest-qualified 引用仍无法解析。仓库 helper 先把已核验 child 指向同一
+repository 下的专用“架构 + digest 前缀”标签，归档后断言唯一 RepoTag、锁定
+child manifest 及仅允许 subject-linked 附属 manifest。专用标签是可审计的
+构建输出；存在且 ID 相同可复用，存在但 ID 不同则失败。
+
+docker save 不保存卷、凭据、Caddy 内部 CA 私钥或 DSH 工作区。所有这些状态必须按部署策略在目标机初始化或由受控备份恢复。
 
 ## 5. 目标机导入与离线启动
 
@@ -138,9 +148,13 @@ docker save 只保存镜像层，不保存卷、凭据、Caddy 内部 CA 私钥�
     docker load --input images/dsh-0.1.1-rc.1-arm64.tar
     docker load --input images/caddy-2.11.4-arm64.tar
     docker image inspect <dsh-image-ref> --format '{{.Os}}/{{.Architecture}} {{.Id}}'
-    docker image inspect <caddy-image-ref> --format '{{.Os}}/{{.Architecture}} {{.Id}}'
+    docker image inspect 'caddy:2.11.4@sha256:1172d4213087d3fc30bafc7ff2c2896180eb0c41ff7f75f315568fb36cabdcba' \
+      --format '{{.Os}}/{{.Architecture}} {{.Id}}'
 
-镜像 inspect 必须显示 linux/arm64，且 image ID/digest 与 image-lock.json 一致。校验失败、架构不符、镜像缺层或锁文件不一致时停止，不要尝试联网拉取或重新解析依赖。
+镜像 inspect 必须显示 linux/arm64，且 image ID/digest 与 image-lock.json 一致；
+Caddy 必须能用 Compose 中原有的 digest-qualified 引用直接解析。校验失败、
+架构不符、镜像缺层、只剩无法匹配的本地标签或锁文件不一致时停止，不要尝试
+联网拉取或重新解析依赖。
 
 将部署拥有的变量写入目标机受保护的环境文件（不提交仓库、不放进离线包）；至少包括实际监听 IP、项目名、工作区路径、认证 hash 的注入方式及模型/provider 端点。不要用环境变量覆盖固定容器身份；应把批准的工作区准备为 `10001:10001` 可写。然后先只解析 Compose：
 

@@ -100,6 +100,12 @@ bundle's `SHA256SUMS` verified every member; its generated lock records manifest
 QEMU-only binfmt/probe claims. SBOM and provenance remain null, so publication
 and production-host acceptance remain blocked.
 
+The current unpushed workflow source also adds the isolated, exact-child
+HAProxy config/direct/Compose contract after the DSH smoke. This has no native
+run evidence yet and does not add HAProxy to the manual bundle or publication
+track; only a successful future run may close the native HAProxy functional
+gap.
+
 The 14 GiB disk is an acceptance constraint. The workflow must record image,
 cache and archive sizes and fail clearly if the dependency closure plus export
 does not fit. A larger runner is not silently selected to hide that failure.
@@ -157,6 +163,11 @@ hashes also matched the generated lock. The lock contains no ARM/QEMU-only
 fields and keeps SBOM/provenance null. This closes only the GitHub-native AMD64
 build/runtime/bundle evidence gap, not the publication gate.
 
+The current unpushed AMD64 workflow likewise adds the isolated HAProxy
+functional contract. Local native AMD64 already passes, but GitHub evidence
+for this workflow change remains pending and the manual candidate continues to
+bundle the default Caddy appliance only.
+
 ## GHCR and offline artifacts
 
 Private GHCR is useful as an online build-zone registry, but a disconnected
@@ -183,16 +194,21 @@ an existing candidate tag and never publishes `latest`; formal tags still
 require real ARM, signed attestations and the remaining release gates.
 See [dual-architecture maintenance and publication](release-maintenance.md).
 
-Docker-archive output does not preserve registry-attached attestations. When a
-candidate is not pushed, SBOM and provenance are carried as separately hashed
-files. If a later authorized workflow pushes a digest to GHCR, its attached
-attestations and an offline verification bundle must both be retained.
+Registry-attached artifact preservation in a Docker archive depends on the
+Engine, image store and export tool. The verified Docker 29/containerd-store
+Caddy archive retains upstream subject manifests carrying SPDX/in-toto and
+SLSA material, while other archive paths may omit them. Those upstream subjects
+are neither DSH build attestations nor a completed project verification gate.
+Project SBOM and provenance therefore remain separately hashed evidence; a
+later authorized registry publication must retain its attached attestations
+and the offline verification bundle.
 
 For the Docker Hub candidate path, "provenance" currently means separately
 hashed BuildKit `mode=max` build metadata plus the source/image coherence
 summary. It is not a signed registry attestation. Direct-push SBOM/provenance
 attestations and signing belong to the separately authorized formal-release
-workflow because the local Docker image store does not preserve attestations.
+workflow; the presence of unverified upstream subjects in a local archive is
+not a substitute.
 
 Actions artifacts are temporary transport, not the long-term registry or the
 release authority. Tar the bundle before upload so file modes are not silently

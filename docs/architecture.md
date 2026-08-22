@@ -87,12 +87,14 @@ loopback policy and is not accepted.
 
 Caddy is the current implementation baseline, not a permanent product
 dependency. [Gateway alternatives and lightweight relay decision](gateway-alternatives.md)
-maps the complete gateway contract to HAProxy, NGINX and Traefik, selects
-HAProxy for the first non-publishing PoC, and defines the substantially higher
-security gate for any project-owned relay. An alternative is acceptable only
-after it preserves the request-trust ordering, offline IP-certificate path,
-streaming behavior, negative exposure boundary and dual-architecture supply
-chain described here.
+maps the complete gateway contract to HAProxy, NGINX and Traefik. The isolated
+HAProxy profile now preserves the local functional boundary on AMD64 and QEMU
+ARM64, but unresolved scan findings and missing real-ARM acceptance keep it
+non-publishing and leave Caddy as the default. See the
+[HAProxy offline PoC runbook](haproxy-poc.md). Any alternative is acceptable
+only after it preserves the request-trust ordering, offline IP-certificate
+path, streaming behavior, negative exposure boundary and dual-architecture
+supply chain described here.
 
 ### Rejected defaults
 
@@ -106,10 +108,10 @@ chain described here.
 
 ### Lifecycle coupling
 
-The sidecar and DSH container share a network namespace and form one appliance.
-Upgrade and rollback recreate them together. Tests must cover DSH restart,
-Caddy restart and full Compose recreation rather than assume the old namespace
-attachment stays correct.
+The selected gateway sidecar and DSH container share a network namespace and
+form one appliance. Upgrade and rollback recreate them together. Tests must
+cover DSH restart, gateway restart and full Compose recreation rather than
+assume the old namespace attachment stays correct.
 
 Binding `${DSH_LAN_IP}:443` is also a cold-start dependency. The static address
 must exist before Compose creates the service. A host startup unit must wait for

@@ -11,8 +11,8 @@ candidate configuration is a deployable release.
 ## Trust boundaries
 
 The DSH Agent can execute code and use credentials available to its service
-identity. Caddy authentication controls who reaches the UI; it does not create
-per-user filesystem, process, model, provider or credential isolation.
+identity. Gateway authentication controls who reaches the UI; it does not
+create per-user filesystem, process, model, provider or credential isolation.
 
 Use separate containers, volumes, workspaces and identities for users who do
 not share one trust boundary.
@@ -61,11 +61,16 @@ create privileged containers and mount host filesystems.
 
 ## Network isolation
 
-- Caddy is the only LAN listener and publishes the exact approved IP on 443.
+- Caddy is the only LAN listener in the default profile and publishes the
+  exact approved IP on 443. The isolated HAProxy PoC may replace that listener
+  only when explicitly selected; it does not run beside Caddy.
 - DSH remains on shared-container loopback and has no published 3080.
 - Before loopback header adaptation, Caddy validates the approved external
   `Host`, rejects cross-site Fetch Metadata and requires any `Origin` to match
   the external HTTPS authority. Basic Auth is not CSRF protection.
+- The HAProxy PoC must preserve the same ordering and consumes a
+  deployment-owned IP-SAN certificate. Its test CA generator is never a
+  production certificate issuer.
 - Restrict egress to approved DNS/NTP, model, MCP, database and artifact
   endpoints using host/gateway policy; a Compose bridge alone is not an
   egress allowlist.
