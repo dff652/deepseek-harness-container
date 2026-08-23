@@ -143,10 +143,19 @@ changing the JSON severity list cannot weaken that invariant.
 
 ### Current publication hold (2026-08-22)
 
+The latest non-publishing source-specific pair is native AMD64 run
+[32664544119](https://github.com/dff652/deepseek-harness-container/actions/runs/32664544119)
+and native ARM64 run
+[32664545874](https://github.com/dff652/deepseek-harness-container/actions/runs/32664545874)
+for commit `8b9ce04…`. Both passed runtime, HAProxy/Caddy classic-store
+clean-load and bundle-hash gates; downloaded locks and artifacts were
+independently verified. Their SBOM/provenance fields remain null, so they do
+not satisfy or bypass the publication policy.
+
 Distroless runtime-source native ARM64 run
 [32557974575](https://github.com/dff652/deepseek-harness-container/actions/runs/32557974575)
 passed build, runtime, native-module and bundle-hash gates for source commit
-`feb4469…`. Its downloaded lock and every bundle checksum were independently
+`feb4469…`. Its downloaded lock and every listed bundle checksum were independently
 verified; SBOM/provenance remain null, so the run does not satisfy or bypass
 the publication policy.
 

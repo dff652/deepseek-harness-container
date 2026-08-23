@@ -75,9 +75,8 @@ services:
     restart: unless-stopped
 
   caddy:
-    # Docker Hub's immutable multi-platform index for Caddy 2.11.4. The
-    # linux/arm64 child manifest is selected by platform above and recorded in
-    # the release image-lock during bundle creation.
+    # The online/default value is the immutable ARM64 child. An air-gapped
+    # deployment sets CADDY_IMAGE to the bundle's verified dedicated tag.
     image: ${CADDY_IMAGE:-caddy:2.11.4@sha256:1172d4213087d3fc30bafc7ff2c2896180eb0c41ff7f75f315568fb36cabdcba}
     pull_policy: never
     platform: linux/arm64

@@ -95,16 +95,19 @@ Distroless runtime-source run
 [32557974575](https://github.com/dff652/deepseek-harness-container/actions/runs/32557974575)
 then rebuilt commit `feb4469…` with the pinned Distroless runtime. All native
 build, runtime, static-contract and bundle-upload steps passed. The downloaded
-bundle's `SHA256SUMS` verified every member; its generated lock records manifest
+bundle's listed `SHA256SUMS` entries passed; its generated lock records manifest
 `sha256:cbc3de07…`, config `sha256:7cc4826b…`, the exact source/run and no
 QEMU-only binfmt/probe claims. SBOM and provenance remain null, so publication
 and production-host acceptance remain blocked.
 
-The current unpushed workflow source also adds the isolated, exact-child
-HAProxy config/direct/Compose contract after the DSH smoke. This has no native
-run evidence yet and does not add HAProxy to the manual bundle or publication
-track; only a successful future run may close the native HAProxy functional
-gap.
+Native run
+[32664545874](https://github.com/dff652/deepseek-harness-container/actions/runs/32664545874)
+rebuilt source `8b9ce04…` and passed the isolated HAProxy config/direct/Compose
+contract plus destructive clean-load checks for the HAProxy and default Caddy
+archive tags on GitHub's classic Docker image store. Its downloaded bundle
+resolved DSH manifest `sha256:101a1b8a…`, config `sha256:0477a2f1…` and the
+expected ARM64 Caddy archive tag. This closes the native CI functional gap,
+not HAProxy adoption, publication or production-host acceptance.
 
 The 14 GiB disk is an acceptance constraint. The workflow must record image,
 cache and archive sizes and fail clearly if the dependency closure plus export
@@ -134,8 +137,8 @@ Distroless Node 24 runtime children. AMD64-native and ARM64-QEMU images passed
 the network-disabled module/Web, read-only-root, shell-absence and UID 10001
 checks. The new QEMU image records image `sha256:16cd5261…` and config
 `sha256:a6cb08c0…`; a same-tool scan reduced DSH High/Critical matches from 24
-to 4 on both architectures. Native GitHub ARM64 run `32557974575` now covers
-this exact source's build/runtime/bundle boundary. The trusted-CA ARM64
+to 4 on both architectures. Historical native GitHub ARM64 run `32557974575`
+covers its recorded `feb4469…` source build/runtime/bundle boundary. The trusted-CA ARM64
 Compose/Caddy test and all disconnected production-host acceptance still must
 be run on the target ARM host before release.
 
@@ -150,9 +153,7 @@ environment-specific candidate lock and `SHA256SUMS`.
 
 This workflow uses `ubuntu-24.04`, `contents: read`, pinned Action and BuildKit
 identities and exact AMD64 child manifests. It does not log in to a registry,
-push an image, create a manifest list, sign or release. Its evidence therefore
-will close the GitHub-native AMD64 regression gap only after a successful run,
-without granting the separate Docker Hub publication workflow any authority.
+push an image, create a manifest list, sign or release.
 
 Native run
 [32559547026](https://github.com/dff652/deepseek-harness-container/actions/runs/32559547026)
@@ -163,10 +164,13 @@ hashes also matched the generated lock. The lock contains no ARM/QEMU-only
 fields and keeps SBOM/provenance null. This closes only the GitHub-native AMD64
 build/runtime/bundle evidence gap, not the publication gate.
 
-The current unpushed AMD64 workflow likewise adds the isolated HAProxy
-functional contract. Local native AMD64 already passes, but GitHub evidence
-for this workflow change remains pending and the manual candidate continues to
-bundle the default Caddy appliance only.
+Latest run
+[32664544119](https://github.com/dff652/deepseek-harness-container/actions/runs/32664544119)
+rebuilt source `8b9ce04…`, passed the isolated HAProxy and default-Caddy
+classic-store clean-load contracts, and produced DSH manifest
+`sha256:fb8fad14…` with config `sha256:49d9d255…`. The downloaded bundle and
+every internal checksum passed independent verification. The manual candidate
+still bundles only the default Caddy appliance.
 
 ## GHCR and offline artifacts
 
@@ -197,7 +201,11 @@ See [dual-architecture maintenance and publication](release-maintenance.md).
 Registry-attached artifact preservation in a Docker archive depends on the
 Engine, image store and export tool. The verified Docker 29/containerd-store
 Caddy archive retains upstream subject manifests carrying SPDX/in-toto and
-SLSA material, while other archive paths may omit them. Those upstream subjects
+SLSA material, while GitHub's classic store exports the legacy config/layers
+and RepoTag without that registry manifest identity. The portable air-gap
+contract therefore starts from a digest-selected source but runs the loaded
+image by a dedicated same-repository archive tag, verified against the bundle
+SHA, config digest and platform. Those upstream subjects
 are neither DSH build attestations nor a completed project verification gate.
 Project SBOM and provenance therefore remain separately hashed evidence; a
 later authorized registry publication must retain its attached attestations

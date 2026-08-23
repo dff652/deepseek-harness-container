@@ -12,9 +12,10 @@ development capability boundary.
 
 **Local and GitHub-native AMD64 plus QEMU and GitHub-native ARM64 candidates
 built — the local images passed the shared runtime, native-module, Compose and
-Caddy HTTPS gateway acceptance; both GitHub-native candidates passed their
-build/runtime/bundle gates. No container image has been published, released or
-deployed.**
+Caddy HTTPS gateway acceptance; final GitHub-native candidates also passed
+classic-Docker clean-load tests for both Caddy and HAProxy before their
+build/runtime/bundle gates completed. No container image has been published,
+released or deployed.**
 
 The older local candidates remain historical evidence. The current source uses
 the exact Node `24.19.0-bookworm-slim` image only as the build
@@ -34,8 +35,10 @@ High records (one advisory) each, making the comparable DSH+HAProxy appliance
 six records per architecture. That is an improvement, not a release approval:
 native production ARM, formal retained supply-chain evidence and the empty-
 exception policy still block adoption. Caddy remains the default profile.
-The native AMD64/ARM64 build-only workflows now contain this isolated test,
-but that workflow change has not yet been pushed or run.
+The native AMD64/ARM64 build-only workflows now contain this isolated test.
+Runs `32664544119` and `32664545874` passed it on source `8b9ce04…`; HAProxy
+remains an isolated non-publishing profile and is not included in the default
+Caddy bundle.
 
 The earlier corrected amd64 candidate records DSH image ID `sha256:5a7c4f1a…` and OCI
 config digest `sha256:5e82d2be…`; its runtime smoke
@@ -49,17 +52,15 @@ native modules, loopback Web, read-only root and UID 10001 checks passed. Its
 full ARM Compose/Caddy appliance remains pending. The exact AMD64 image passed
 a fresh-volume Compose cold start plus trusted-CA 401/200,
 bad-Host 421, bad-Origin 403 and no-3080 checks.
-GitHub [native AMD64 run 32559547026](https://github.com/dff652/deepseek-harness-container/actions/runs/32559547026)
-rebuilt source commit `6bed724…`, producing manifest `sha256:c6e6afd4…` and
-config `sha256:cf24849c…`. Every bundle checksum and the independently derived
-OCI/archive digests passed; the lock records the exact run and contains no
-ARM/QEMU-only evidence. Its SBOM/provenance fields remain null.
-GitHub [native ARM run 32557974575](https://github.com/dff652/deepseek-harness-container/actions/runs/32557974575)
-then rebuilt Distroless runtime commit `feb4469…`, producing manifest
-`sha256:cbc3de07…` and config `sha256:7cc4826b…`. All workflow steps and every
-downloaded bundle hash passed; the generated candidate lock records that exact
-source/run and removes QEMU-only evidence. Its SBOM/provenance fields remain
-null. Real disconnected production-ARM acceptance remains open.
+GitHub [native AMD64 run 32664544119](https://github.com/dff652/deepseek-harness-container/actions/runs/32664544119)
+rebuilt source `8b9ce04…`, producing DSH manifest `sha256:fb8fad14…` and
+config `sha256:49d9d255…`. GitHub
+[native ARM run 32664545874](https://github.com/dff652/deepseek-harness-container/actions/runs/32664545874)
+produced manifest `sha256:101a1b8a…` and config `sha256:0477a2f1…` from the
+same source. Every downloaded bundle member, generated lock, architecture,
+DSH manifest/config digest and portable Caddy archive tag was independently
+rechecked. Both locks still record null SBOM/provenance fields. Real
+disconnected production-ARM acceptance remains open.
 
 This repository was created to separate the OCI/Compose release lifecycle from
 the configuration-only plugin packages in the sibling
@@ -77,7 +78,7 @@ The candidate targets this exact tuple:
 | Node.js | `24.19.0` | Bookworm build image plus Distroless Debian 13 production runtime locked per architecture |
 | pnpm | `11.7.0` | Locked with Corepack integrity |
 | Caddy | `2.11.4` | OCI index plus AMD64/ARM64 child digests locked |
-| HAProxy alternative | `3.4.3-alpine3.24` | isolated exact-child AMD64/ARM64 PoC passed locally; not adopted |
+| HAProxy alternative | `3.4.3-alpine3.24` | isolated exact-child local/GitHub-native AMD64/ARM64 PoC passed; not adopted |
 | Production target | `linux/arm64`, glibc | QEMU and GitHub native candidates passed; production ARM pending |
 | Local test target | `linux/amd64`, glibc | native runtime and Compose/Caddy acceptance passed |
 
@@ -111,9 +112,9 @@ native-module and Web smoke before packaging.
 native AMD64 build/runtime/bundle evidence without registry credentials or
 image publication. It is separate from the manual Docker Hub publication
 workflow. Native run
-[32559547026](https://github.com/dff652/deepseek-harness-container/actions/runs/32559547026)
-passed these gates for source commit `6bed724…`; the downloaded artifact and
-its internal checksums were independently verified.
+[32664544119](https://github.com/dff652/deepseek-harness-container/actions/runs/32664544119)
+passed these gates for source `8b9ce04…`; its downloaded artifact and internal
+checksums were independently verified, including classic-store clean loading.
 
 The ARM64 paths remain separate evidence levels:
 
@@ -282,8 +283,8 @@ and `.github/workflows/build-arm64.yml`. Repository policy records local/QEMU
 and native GitHub outputs as candidate-only. Each new ARM64 or AMD64 bundle
 generates an environment-specific candidate lock. `image-lock.json` records the
 current Distroless QEMU output; `native-arm64-lock.json` preserves the earlier
-hardened native run. The latest Distroless-source native lock is retained in run
-`32557974575`; the latest native AMD64 lock is retained in run `32559547026`.
+hardened native run. The latest native ARM64 lock is retained in run
+`32664545874`; the matching native AMD64 lock is retained in run `32664544119`.
 These candidate locks deliberately retain null SBOM/provenance fields.
 The Docker Hub workflow generates separately hashed Syft/CycloneDX SBOMs,
 Grype reports, license-policy results and BuildKit metadata for future

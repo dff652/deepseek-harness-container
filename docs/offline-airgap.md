@@ -1,6 +1,6 @@
 # DSH 容器化离线部署 SOP（ARM64）
 
-> 状态：本机 AMD64 回归候选已通过断网 runtime 与 Compose/Caddy 入口验收；更新共享 entrypoint/网络策略后，新的 x86/Buildx/QEMU ARM64 候选也已重建，并通过断网原生模块、Web 与 Compose/Caddy 入口验收；GitHub 原生 ARM64 构建、runtime smoke、候选包下载复核亦已通过。生产 ARM 断网验收、SBOM、独立 provenance、签名和镜像发布仍未完成，因此当前仍不是可直接投产的发布镜像。
+> 状态：本机 AMD64 与 QEMU ARM64 候选、GitHub 原生 AMD64/ARM64 候选均已通过相应 runtime；最终 GitHub runs `32664544119`/`32664545874` 还通过了 classic Docker store 的 Caddy/HAProxy clean-load，下载包全部成员（含隐藏 `.env.example`）校验亦通过。生产 ARM 断网验收、SBOM、独立 provenance、签名和镜像发布仍未完成，因此当前仍不是可直接投产的发布镜像。
 
 本文记录 deepseek-harness-container 的目标交付边界：在一台没有外网、没有域名的 Linux ARM64 内网主机上，用 Docker Compose 启动 DSH 和 Caddy，并由内网客户端通过 HTTPS 访问。宿主机 systemd 安装是另一个产品和验收记录，不与本方案混用。
 
@@ -127,11 +127,14 @@ image-lock.json 在发布前必须包含真实的 DSH/Node/pnpm/Caddy/base-image
     sha256sum images/*.tar compose.yaml Caddyfile image-lock.json > SHA256SUMS
 
 禁止直接对 `name:tag@child-digest` 执行 `docker save`：这种归档可能写出
-`RepoTags:null`，在全新断网 daemon 上 `docker load` 后，Compose 的
-digest-qualified 引用仍无法解析。仓库 helper 先把已核验 child 指向同一
-repository 下的专用“架构 + digest 前缀”标签，归档后断言唯一 RepoTag、锁定
-child manifest 及仅允许 subject-linked 附属 manifest。专用标签是可审计的
-构建输出；存在且 ID 相同可复用，存在但 ID 不同则失败。
+`RepoTags:null`，在全新断网 daemon 上 `docker load` 后没有稳定的 Compose
+名称。仓库 helper 先把已核验 child 指向同一 repository 下的专用“架构 +
+digest 前缀”标签，并断言唯一 RepoTag。containerd store 还能保留并核验 child
+manifest/subject；classic store 则以源 config digest、归档 SHA 和平台形成离线
+身份。目标机一律使用专用标签，而不是假设 registry digest 会被 `docker load`
+恢复。[Docker 官方文档](https://docs.docker.com/reference/cli/docker/image/save/)
+也只承诺 `docker image save` 保存指定标签/版本。专用标签
+存在且 ID 相同可复用，存在但 ID 不同则失败。
 
 docker save 不保存卷、凭据、Caddy 内部 CA 私钥或 DSH 工作区。所有这些状态必须按部署策略在目标机初始化或由受控备份恢复。
 
@@ -148,13 +151,14 @@ docker save 不保存卷、凭据、Caddy 内部 CA 私钥或 DSH 工作区。�
     docker load --input images/dsh-0.1.1-rc.1-arm64.tar
     docker load --input images/caddy-2.11.4-arm64.tar
     docker image inspect <dsh-image-ref> --format '{{.Os}}/{{.Architecture}} {{.Id}}'
-    docker image inspect 'caddy:2.11.4@sha256:1172d4213087d3fc30bafc7ff2c2896180eb0c41ff7f75f315568fb36cabdcba' \
+    docker image inspect 'caddy:dsh-offline-2.11.4-arm64-1172d4213087' \
       --format '{{.Os}}/{{.Architecture}} {{.Id}}'
 
-镜像 inspect 必须显示 linux/arm64，且 image ID/digest 与 image-lock.json 一致；
-Caddy 必须能用 Compose 中原有的 digest-qualified 引用直接解析。校验失败、
-架构不符、镜像缺层、只剩无法匹配的本地标签或锁文件不一致时停止，不要尝试
-联网拉取或重新解析依赖。
+镜像 inspect 必须显示 linux/arm64；classic store 的 Caddy ID 应为锁定 config
+`sha256:6b08c1b9…`，containerd store 可显示锁定 child manifest
+`sha256:1172d421…`。环境文件中的 `CADDY_IMAGE` 必须使用包内
+`.env.example` 给出的专用标签。校验失败、架构不符、镜像缺层、标签或锁文件
+不一致时停止，不要尝试联网拉取或重新解析依赖。
 
 将部署拥有的变量写入目标机受保护的环境文件（不提交仓库、不放进离线包）；至少包括实际监听 IP、项目名、工作区路径、认证 hash 的注入方式及模型/provider 端点。不要用环境变量覆盖固定容器身份；应把批准的工作区准备为 `10001:10001` 可写。然后先只解析 Compose：
 
@@ -240,4 +244,4 @@ Agent 开发不需要让 DSH 容器暴露到互联网，也不应让 Agent 获�
 3. 选择旧版本对应的、已审查的环境和 Compose 引用，执行 docker compose ... up -d --no-build --pull never。
 4. 重新执行 443/3080 负例、证书/认证、浏览器、模型/MCP 和冷启动关键检查。
 
-镜像导入、签名/发布、注册表推送、生产部署和回滚都是独立的授权转换。当前已有通过本机验收的 AMD64 回归候选、重新构建并通过 QEMU runtime/Compose/Caddy 入口验收的 ARM64 候选，以及下载复核通过的 GitHub 原生 ARM64 候选。项目已有实际 Dockerfile、Compose、Caddyfile 和候选包，但还缺生产 ARM 验收、完整 SBOM/provenance/签名和正式发布包验证，因此仍不应把新项目称为“开箱即用”发布物。
+镜像导入、签名/发布、注册表推送、生产部署和回滚都是独立的授权转换。当前已有通过本机验收的 AMD64/QEMU ARM64 候选，以及下载复核通过的 GitHub 原生 AMD64/ARM64 候选和 classic-store clean-load 证据。项目已有实际 Dockerfile、Compose、Caddyfile 和候选包，但还缺生产 ARM 验收、完整 SBOM/provenance/签名和正式发布包验证，因此仍不应把新项目称为“开箱即用”发布物。

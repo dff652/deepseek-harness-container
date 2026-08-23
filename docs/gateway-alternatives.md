@@ -195,9 +195,11 @@ no published 3080. Full Compose tests using the exact DSH AMD64 and ARM64
 images also passed. See [the offline PoC runbook](haproxy-poc.md) for exact
 digests, commands and evidence boundaries.
 
-Both native build-only workflows now contain the isolated tests, but the
-workflow change is unpushed and has no GitHub run evidence yet. It must not be
-described as a native HAProxy pass until a source-specific run succeeds.
+Both native build-only workflows contain the isolated tests. AMD64 run
+`32664544119` and ARM64 run `32664545874` passed them for source `8b9ce04…`,
+including classic-store clean-load for the HAProxy and Caddy archive tags.
+This is native CI functional evidence, not retained supply-chain approval or
+a gateway adoption decision.
 
 Actual-image scans with Syft `1.51.0`, Grype `0.117.0` and the database built
 `2026-08-21T06:17:24Z` found two High records on each HAProxy child, both for

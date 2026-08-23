@@ -9,10 +9,11 @@ tests passed on 2026-08-22. A disconnected production ARM host, real browser,
 model/MCP calls, cold boot and vulnerability policy acceptance are still
 required before adoption.
 
-The native AMD64 and ARM64 build-only workflows now include the same isolated
-HAProxy contract after building DSH. This change has not yet been pushed or run
-on GitHub; only a successful source-specific run may change the corresponding
-native acceptance field in the PoC lock.
+The native AMD64 and ARM64 build-only workflows include the same isolated
+HAProxy contract after building DSH. Source `8b9ce04…` passed native AMD64 run
+`32664544119` and native ARM64 run `32664545874`, including clean-load on the
+GitHub classic Docker store. The PoC lock still records the earlier retained
+scan snapshot and is not a release/adoption approval.
 
 At this snapshot the public GitHub repository has no Actions secrets configured,
 the workstation has no `cosign` or signing identity configured, the three
@@ -85,16 +86,18 @@ sha256sum haproxy-3.4.3-arm64.tar > haproxy-3.4.3-arm64.tar.sha256
 Directly saving the digest-qualified source is prohibited because Docker may
 write `RepoTags:null`; a clean disconnected daemon would then load the layers
 but fail to resolve the Compose image name. The helper retains one dedicated
-same-repository RepoTag, verifies the selected child manifest and permits only
-subject-linked attached manifests. The AMD64 archive tag follows the same
-pattern: `haproxy:dsh-offline-3.4.3-amd64-c7f5037a5673`.
+same-repository RepoTag. With a containerd image store it verifies the selected
+child manifest and subject-linked attachments; with the classic store it
+verifies the legacy config blob against the digest-selected source image ID.
+In both cases the archive SHA, platform and tag are required evidence. The
+AMD64 archive tag is `haproxy:dsh-offline-3.4.3-amd64-c7f5037a5673`.
 
 Use the organization's offline CA to issue a server certificate whose SAN is
 the exact LAN IP. Assemble `tls.pem` as server certificate, intermediate chain
 if present, then private key; keep it mode 0600. Copy
 `.env.haproxy.example` to a deployment-owned path outside Git and fill the
-exact image, platform, LAN IP, approved workspace, rendered config and PEM
-paths.
+verified offline image tag, platform, LAN IP, approved workspace, rendered
+config and PEM paths.
 
 Generate the HAProxy password hash interactively on a trusted preparation
 machine; do not put the plaintext password on a command line:
@@ -149,9 +152,16 @@ sha256sum --check SHA256SUMS
 sha256sum --check haproxy-3.4.3-arm64.tar.sha256
 docker load --input dsh-0.1.1-rc.1-arm64.tar
 docker load --input haproxy-3.4.3-arm64.tar
+export HAPROXY_IMAGE='haproxy:dsh-offline-3.4.3-arm64-0fe6e31a91ad'
 test "$(docker image inspect "$HAPROXY_IMAGE" \
-  --format '{{.Id}} {{.Os}}/{{.Architecture}}')" = \
-  'sha256:0fe6e31a91ad42440ceba4419694189673f9773f90b985bd883db0054a7c5259 linux/arm64'
+  --format '{{.Os}}/{{.Architecture}}')" = 'linux/arm64'
+loaded_id=$(docker image inspect "$HAPROXY_IMAGE" --format '{{.Id}}')
+case "$loaded_id" in
+  sha256:0fe6e31a91ad42440ceba4419694189673f9773f90b985bd883db0054a7c5259|\
+  sha256:5d297f7ef0f6351a1c848101fcb2452cb3f1ae9bfa067f40e94032d499676ef0) ;;
+  *) echo "unexpected HAProxy image ID: $loaded_id" >&2; exit 1 ;;
+esac
+unset loaded_id
 
 docker compose --project-name dsh-haproxy \
   --env-file /approved/path/haproxy.env \
@@ -238,7 +248,7 @@ not a substitute for retained native workflow evidence.
 
 ## Final local review and verification
 
-The 2026-08-22 final review covered the unpushed gateway-alternatives commit
+The 2026-08-22 local review covered the gateway-alternatives commit
 and the complete combined worktree. It repaired mode-0600 validation staging,
 wrong-port Host acceptance, reusable/symlinkable test-PKI output, wildcard
 `0.0.0.0` binding, QEMU password-hash cost, one-minute SSE/agent idle timeouts
@@ -248,6 +258,7 @@ After those repairs, all shell syntax/ShellCheck, Python/YAML/actionlint,
 10 supply-chain policy tests, Compose/negative-exposure/workflow contracts,
 Caddy initialization and AMD64/ARM64 archive clean-load contracts passed. The
 exact local AMD64 and QEMU ARM64 DSH/HAProxy images then passed direct and full
-Compose runtime tests. This closes the local functional PoC only; the native
-GitHub workflow run, retained formal evidence, real production ARM and
-publication/adoption decisions remain pending.
+Compose runtime tests. Native GitHub AMD64 run `32664544119` and ARM64 run
+`32664545874` subsequently passed the same DSH/HAProxy functional contract and
+classic-store archive clean-load checks. Retained formal supply-chain evidence,
+real production ARM and publication/adoption decisions remain pending.
