@@ -21,6 +21,7 @@ jobs:
       CADDY_ARCHIVE_TAG: caddy:dsh-offline-2.11.4-arm64-1172d4213087
       HAPROXY_REF: haproxy:3.4.3-alpine3.24@sha256:0fe6e31a91ad42440ceba4419694189673f9773f90b985bd883db0054a7c5259
       HAPROXY_ARCHIVE_TAG: haproxy:dsh-offline-3.4.3-arm64-0fe6e31a91ad
+      DOCKER_BUILD_RECORD_UPLOAD: "false"
     steps:
       - name: Check out source
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
@@ -178,5 +179,6 @@ jobs:
         if: github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
+          name: dsh-container-arm64-${{ github.sha }}
           path: ${{ runner.temp }}/dsh-container-arm64.tar
           retention-days: 14
