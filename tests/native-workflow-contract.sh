@@ -33,6 +33,7 @@ grep -Fq 'del(.images.binfmt, .images.arm64Probe)' "$workflow" || fail "QEMU-onl
 grep -Fq 'buildx-version.txt' "$workflow" || fail "native Buildx version evidence missing"
 grep -Fq 'builder-inspect.txt' "$workflow" || fail "native builder evidence missing"
 grep -Fq 'native-github-candidate-built-not-released' "$workflow" || fail "native candidate status missing"
+grep -Fq 'sha256sum -- .env.example * > SHA256SUMS' "$workflow" || fail "hidden ARM64 environment example is omitted from bundle checksums"
 grep -Fq 'DOCKER_BUILD_RECORD_UPLOAD: "false"' "$workflow" || fail "automatic ARM64 build-record upload is not disabled"
 grep -Fq 'github-actions/ubuntu-24.04-arm-native-buildx' "$workflow" || fail "native build environment missing"
 grep -Fq "config_path=\$(tar -xOf" "$workflow" || fail "native OCI config digest is not extracted from the archive"

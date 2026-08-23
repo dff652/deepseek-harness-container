@@ -171,7 +171,7 @@ jobs:
           docker system df > "${RUNNER_TEMP}/bundle/docker-system-df.txt"
           (
             cd "${RUNNER_TEMP}/bundle"
-            sha256sum -- * > SHA256SUMS
+            sha256sum -- .env.example * > SHA256SUMS
           )
           tar -C "${RUNNER_TEMP}" -cf "${RUNNER_TEMP}/dsh-container-arm64.tar" bundle
 

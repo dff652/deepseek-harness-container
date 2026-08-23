@@ -47,6 +47,7 @@ grep -Fq 'buildx-version.txt' "$workflow" || fail "Buildx version evidence missi
 grep -Fq 'builder-inspect.txt' "$workflow" || fail "builder evidence missing"
 grep -Fq 'native-candidate-lock.json' "$workflow" || fail "native candidate lock is not generated"
 grep -Fq 'native-github-candidate-built-not-released' "$workflow" || fail "candidate-only status missing"
+grep -Fq 'sha256sum -- .env.example * > SHA256SUMS' "$workflow" || fail "hidden AMD64 environment example is omitted from bundle checksums"
 grep -Fq 'github-actions/ubuntu-24.04-amd64-native-buildx' "$workflow" || fail "native AMD64 build environment missing"
 grep -Fq "sourceCommit: \$sourceCommit" "$workflow" || fail "source commit is not recorded"
 grep -Fq "githubRunId: \$githubRunId" "$workflow" || fail "GitHub run ID is not recorded"
