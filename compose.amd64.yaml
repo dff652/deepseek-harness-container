@@ -1,11 +1,11 @@
 services:
   caddy-init:
-    image: caddy:2.11.4@sha256:98eb57d882ccd5213d1688764db10c1ca2c58a1ca3a6717a3411ad798f7a423a
+    image: ${CADDY_IMAGE:-caddy:2.11.4@sha256:98eb57d882ccd5213d1688764db10c1ca2c58a1ca3a6717a3411ad798f7a423a}
     platform: linux/amd64
 
   dsh:
     platform: linux/amd64
 
   caddy:
-    image: caddy:2.11.4@sha256:98eb57d882ccd5213d1688764db10c1ca2c58a1ca3a6717a3411ad798f7a423a
+    image: ${CADDY_IMAGE:-caddy:2.11.4@sha256:98eb57d882ccd5213d1688764db10c1ca2c58a1ca3a6717a3411ad798f7a423a}
     platform: linux/amd64

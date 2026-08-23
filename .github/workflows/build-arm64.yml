@@ -20,6 +20,7 @@ jobs:
       CADDY_REF: caddy:2.11.4@sha256:1172d4213087d3fc30bafc7ff2c2896180eb0c41ff7f75f315568fb36cabdcba
       CADDY_ARCHIVE_TAG: caddy:dsh-offline-2.11.4-arm64-1172d4213087
       HAPROXY_REF: haproxy:3.4.3-alpine3.24@sha256:0fe6e31a91ad42440ceba4419694189673f9773f90b985bd883db0054a7c5259
+      HAPROXY_ARCHIVE_TAG: haproxy:dsh-offline-3.4.3-arm64-0fe6e31a91ad
     steps:
       - name: Check out source
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
@@ -75,20 +76,25 @@ jobs:
       - name: Run isolated non-publishing HAProxy PoC
         run: |
           docker pull --platform linux/arm64 "$HAPROXY_REF"
-          SOURCE_IMAGE="$HAPROXY_REF" SOURCE_PLATFORM=linux/arm64 CLEAN_LOAD_REQUIRED=1 \
+          SOURCE_IMAGE="$HAPROXY_REF" SOURCE_PLATFORM=linux/arm64 \
+            ARCHIVE_TAG="$HAPROXY_ARCHIVE_TAG" CLEAN_LOAD_REQUIRED=1 \
+            bash tests/offline-image-archive.sh
+          docker pull --platform linux/arm64 "$CADDY_REF"
+          SOURCE_IMAGE="$CADDY_REF" SOURCE_PLATFORM=linux/arm64 \
+            ARCHIVE_TAG="$CADDY_ARCHIVE_TAG" CLEAN_LOAD_REQUIRED=1 \
             bash tests/offline-image-archive.sh
           CONTRACT_DSH_IMAGE="$IMAGE_TAG" \
             CONTRACT_PLATFORM=linux/arm64 \
-            CONTRACT_HAPROXY_IMAGE="$HAPROXY_REF" \
+            CONTRACT_HAPROXY_IMAGE="$HAPROXY_ARCHIVE_TAG" \
             bash tests/haproxy-contract.sh
-          HAPROXY_IMAGE="$HAPROXY_REF" \
+          HAPROXY_IMAGE="$HAPROXY_ARCHIVE_TAG" \
             HAPROXY_PLATFORM=linux/arm64 \
             BACKEND_IMAGE="$IMAGE_TAG" \
             BACKEND_PLATFORM=linux/arm64 \
             bash tests/haproxy-runtime.sh
           DSH_IMAGE="$IMAGE_TAG" \
             DSH_PLATFORM=linux/arm64 \
-            HAPROXY_IMAGE="$HAPROXY_REF" \
+            HAPROXY_IMAGE="$HAPROXY_ARCHIVE_TAG" \
             bash tests/haproxy-compose-runtime.sh
 
       - name: Assemble manual-download bundle

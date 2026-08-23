@@ -22,8 +22,11 @@ grep -Fq 'NODE_BASE_REF=node:24.19.0-bookworm-slim@sha256:65932751ed4073ed02f5c0
 grep -Fq 'NODE_RUNTIME_REF=gcr.io/distroless/nodejs24-debian13@sha256:579735ae8373ff1ab6c4aa251480fd17ae6ec1b7f83b1bfc76bf6003d0fb242b' "$workflow" || fail "AMD64 Node runtime child is not pinned"
 grep -Fq 'CADDY_REF: caddy:2.11.4@sha256:98eb57d882ccd5213d1688764db10c1ca2c58a1ca3a6717a3411ad798f7a423a' "$workflow" || fail "AMD64 Caddy child is not pinned"
 grep -Fq 'CADDY_ARCHIVE_TAG: caddy:dsh-offline-2.11.4-amd64-98eb57d882cc' "$workflow" || fail "AMD64 dedicated Caddy archive tag is missing"
+# shellcheck disable=SC2016 # Inspect literal workflow shell variables.
+grep -Fq 'ARCHIVE_TAG="$CADDY_ARCHIVE_TAG" CLEAN_LOAD_REQUIRED=1' "$workflow" || fail "AMD64 workflow does not clean-load the Caddy archive tag"
 grep -Fq "scripts/save-pinned-image.sh \"\$CADDY_REF\" linux/amd64" "$workflow" || fail "AMD64 Caddy archive can lose its resolvable RepoTag"
 grep -Fq 'HAPROXY_REF: haproxy:3.4.3-alpine3.24@sha256:c7f5037a567378929d0aba734eb78b73497209c72456519420ce5e68a42d60ac' "$workflow" || fail "AMD64 HAProxy child is not pinned"
+grep -Fq 'HAPROXY_ARCHIVE_TAG: haproxy:dsh-offline-3.4.3-amd64-c7f5037a5673' "$workflow" || fail "AMD64 HAProxy offline tag is missing"
 grep -Fq 'driver-opts: image=moby/buildkit:v0.29.0@sha256:0039c1d47e8748b5afea56f4e85f14febaf34452bd99d9552d2daa82262b5cc5' "$workflow" || fail "BuildKit image is not pinned"
 grep -Fq 'tests/amd64-runtime.sh' "$workflow" || fail "AMD64 runtime smoke missing"
 grep -Fq 'tests/amd64-compose-contract.sh' "$workflow" || fail "AMD64 Compose contract missing"
@@ -32,7 +35,10 @@ grep -Fq 'tests/haproxy-contract.sh' "$workflow" || fail "HAProxy config contrac
 grep -Fq 'tests/haproxy-runtime.sh' "$workflow" || fail "HAProxy direct runtime contract is not run"
 grep -Fq 'tests/haproxy-compose-runtime.sh' "$workflow" || fail "HAProxy Compose runtime contract is not run"
 grep -Fq 'tests/offline-image-archive.sh' "$workflow" || fail "offline image archive clean-load contract is not run"
-grep -Fq 'SOURCE_PLATFORM=linux/amd64 CLEAN_LOAD_REQUIRED=1' "$workflow" || fail "AMD64 workflow does not require a destructive clean-load proof"
+# shellcheck disable=SC2016 # Inspect literal workflow shell variables.
+grep -Fq 'ARCHIVE_TAG="$HAPROXY_ARCHIVE_TAG" CLEAN_LOAD_REQUIRED=1' "$workflow" || fail "AMD64 workflow does not require a tagged destructive clean-load proof"
+# shellcheck disable=SC2016 # Inspect literal workflow shell variables.
+grep -Fq 'HAPROXY_IMAGE="$HAPROXY_ARCHIVE_TAG"' "$workflow" || fail "AMD64 HAProxy runtime does not use the portable offline tag"
 grep -Fq 'DOCKER_BUILD_RECORD_UPLOAD: "false"' "$workflow" || fail "automatic PR build-record upload is not disabled"
 grep -Fq 'available_kib' "$workflow" || fail "disk availability preflight missing"
 grep -Fq 'docker-system-df-before.txt' "$workflow" || fail "Docker disk evidence missing"
@@ -52,7 +58,8 @@ grep -Fq 'sbomSha256: null' "$workflow" || fail "missing SBOM state is not expli
 grep -Fq 'provenanceSha256: null' "$workflow" || fail "missing provenance state is not explicit"
 grep -Fq 'del(.images.binfmt, .images.arm64Probe)' "$workflow" || fail "QEMU-only lock keys are not removed"
 grep -Fq 'CANDIDATE-NOT-RELEASE.txt' "$workflow" || fail "candidate release boundary marker missing"
-grep -Fq 'cp compose.yaml compose.amd64.yaml Caddyfile .env.example' "$workflow" || fail "AMD64 Compose override is not bundled"
+# shellcheck disable=SC2016 # Inspect literal workflow shell variables.
+grep -Fq 'cp .env.amd64.example "${RUNNER_TEMP}/bundle/.env.example"' "$workflow" || fail "AMD64 offline environment example is not bundled"
 grep -Fq 'actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a' "$workflow" || fail "manual artifact upload is not pinned"
 # shellcheck disable=SC2016 # Inspect literal GitHub expression syntax.
 grep -Fq 'name: dsh-container-amd64-${{ github.sha }}' "$workflow" || fail "manual artifact name is not source-specific"

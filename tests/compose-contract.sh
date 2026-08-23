@@ -18,6 +18,16 @@ command -v docker >/dev/null || {
   echo 'FAIL: docker is required for Compose contract validation' >&2
   exit 1
 }
+grep -Fq 'CADDY_IMAGE:-caddy:2.11.4@sha256:1172d4213087d3fc30bafc7ff2c2896180eb0c41ff7f75f315568fb36cabdcba' \
+  "$ROOT/compose.yaml" || {
+  echo 'FAIL: ARM64 Caddy default cannot be overridden by the verified offline tag' >&2
+  exit 1
+}
+grep -Fq 'CADDY_IMAGE=caddy:dsh-offline-2.11.4-arm64-1172d4213087' \
+  "$ROOT/.env.example" || {
+  echo 'FAIL: ARM64 offline Caddy tag is missing from the environment example' >&2
+  exit 1
+}
 
 rendered="$tmp_dir/compose.json"
 docker compose -f "$ROOT/compose.yaml" config --format json >"$rendered"

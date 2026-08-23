@@ -24,6 +24,17 @@ export DSH_WORKSPACE="$tmp_dir/workspace"
 export DSH_CADDY_USERNAME='dsh-admin'
 export DSH_CADDY_PASSWORD_HASH='test-bcrypt-hash'
 
+grep -Fq 'CADDY_IMAGE:-caddy:2.11.4@sha256:98eb57d882ccd5213d1688764db10c1ca2c58a1ca3a6717a3411ad798f7a423a' \
+  "$ROOT/compose.amd64.yaml" || {
+  echo 'FAIL: AMD64 Caddy default cannot be overridden by the verified offline tag' >&2
+  exit 1
+}
+grep -Fq 'CADDY_IMAGE=caddy:dsh-offline-2.11.4-amd64-98eb57d882cc' \
+  "$ROOT/.env.amd64.example" || {
+  echo 'FAIL: AMD64 offline Caddy tag is missing from the environment example' >&2
+  exit 1
+}
+
 rendered="$tmp_dir/compose.json"
 docker compose \
   -f "$ROOT/compose.yaml" \

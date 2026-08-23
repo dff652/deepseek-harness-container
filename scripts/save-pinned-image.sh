@@ -17,6 +17,7 @@ fail() {
 
 command -v docker >/dev/null || fail 'docker is required'
 command -v jq >/dev/null || fail 'jq is required'
+command -v sha256sum >/dev/null || fail 'sha256sum is required'
 command -v tar >/dev/null || fail 'tar is required'
 
 [[ "$source_ref" =~ @sha256:[0-9a-f]{64}$ ]] ||
@@ -83,19 +84,45 @@ jq -e --arg tag "$archive_tag" \
   'length == 1 and .[0].RepoTags == [$tag]' \
   < <(tar -xOf "$temporary_output" manifest.json) >/dev/null ||
   fail 'legacy archive manifest does not contain exactly one expected RepoTag entry'
+config_path=$(tar -xOf "$temporary_output" manifest.json | jq -er '.[0].Config')
+case "$config_path" in
+  blobs/sha256/*)
+    config_digest="sha256:${config_path##*/}"
+    ;;
+  [0-9a-f][0-9a-f]*.json)
+    config_digest="sha256:${config_path%.json}"
+    [[ "$config_digest" =~ ^sha256:[0-9a-f]{64}$ ]] ||
+      fail 'legacy archive config path is not a sha256 digest'
+    ;;
+  *) fail 'archive config path is not content-addressed' ;;
+esac
+test "$(tar -xOf "$temporary_output" "$config_path" | sha256sum | cut -d' ' -f1)" = \
+  "${config_digest#sha256:}" || fail 'archive config blob checksum is invalid'
 archive_ref_name=${archive_tag##*:}
-jq -e --arg digest "${source_ref##*@}" --arg refName "$archive_ref_name" '
+if jq -e --arg digest "${source_ref##*@}" --arg refName "$archive_ref_name" '
   ([.manifests[] | select(.digest == $digest)] | length == 1) and
   ([.manifests[] | select(.annotations["org.opencontainers.image.ref.name"] == $refName)]
     | length == 1 and .[0].digest == $digest) and
   (all(.manifests[];
     .digest == $digest or
     .annotations["io.containerd.manifest.subject"] == $digest))
-' < <(tar -xOf "$temporary_output" index.json) >/dev/null ||
-  fail 'archive index does not preserve the selected child and attached subjects'
+' < <(tar -xOf "$temporary_output" index.json) >/dev/null 2>&1; then
+  archive_store=containerd
+else
+  # The classic Docker image store exports the legacy image config/layers and
+  # a RepoTag, but not the pulled registry manifest identity. Its local image
+  # ID is the config digest. The exact source child was still selected above;
+  # the archive checksum and this config digest become the offline identity.
+  test "$source_id" != "${source_ref##*@}" ||
+    fail 'archive lost the selected child manifest from a content store'
+  test "$config_digest" = "$source_id" ||
+    fail 'classic-store archive config does not match the selected source image ID'
+  archive_store=classic
+fi
 ln -- "$temporary_output" "$output"
 rm -- "$temporary_output"
 trap - EXIT
 
-printf 'PASS: saved %s (%s, image %s) as resolvable archive tag %s to %s\n' \
-  "$source_ref" "$expected_platform" "$source_id" "$archive_tag" "$output"
+printf 'PASS: saved %s (%s, image %s, config %s, store %s) as archive tag %s to %s\n' \
+  "$source_ref" "$expected_platform" "$source_id" "$config_digest" \
+  "$archive_store" "$archive_tag" "$output"

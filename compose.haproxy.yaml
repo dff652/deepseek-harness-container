@@ -6,8 +6,8 @@ name: dsh-container-haproxy-poc
 # provide a test/deployment IP-SAN PEM via HAPROXY_CONFIG/HAPROXY_CERT.
 # Immutable Docker Official Image index:
 # haproxy:3.4.3-alpine3.24@sha256:fb87fc81943143b9acaea7442973e6ba654035fff76ffe7af6829dd1bcb0f7a5.
-# Compose requires one of the exact children below for offline use.  Its
-# resolved children at the time of this PoC are:
+# The preparation host verifies one exact child below. The disconnected host
+# runs the dedicated same-repository archive tag recorded beside that child:
 #   AMD64 child: sha256:c7f5037a567378929d0aba734eb78b73497209c72456519420ce5e68a42d60ac
 #   ARM64 child: sha256:0fe6e31a91ad42440ceba4419694189673f9773f90b985bd883db0054a7c5259
 services:
@@ -52,7 +52,7 @@ services:
     # The deployment supplies config and the IP-SAN PEM read-only.  This
     # narrow root one-shot stages them into a named volume owned by UID 99 so
     # the long-running process never needs host-readable private-key modes.
-    image: ${HAPROXY_IMAGE:?set HAPROXY_IMAGE to the exact architecture child digest}
+    image: ${HAPROXY_IMAGE:?set HAPROXY_IMAGE to the verified offline archive tag}
     pull_policy: never
     platform: ${DSH_PLATFORM:-linux/arm64}
     network_mode: none
@@ -85,7 +85,7 @@ services:
     restart: "no"
 
   haproxy:
-    image: ${HAPROXY_IMAGE:?set HAPROXY_IMAGE to the exact architecture child digest}
+    image: ${HAPROXY_IMAGE:?set HAPROXY_IMAGE to the verified offline archive tag}
     pull_policy: never
     platform: ${DSH_PLATFORM:-linux/arm64}
     network_mode: service:dsh

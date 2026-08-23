@@ -14,7 +14,7 @@ source_leaf=${source_name##*/}
   exit 1
 }
 readonly SOURCE_REPOSITORY=${source_name%:*}
-readonly TEST_ARCHIVE_TAG="$SOURCE_REPOSITORY:dsh-offline-contract-${SOURCE_PLATFORM##*/}-${SOURCE_DIGEST#sha256:}"
+readonly TEST_ARCHIVE_TAG=${ARCHIVE_TAG:-$SOURCE_REPOSITORY:dsh-offline-contract-${SOURCE_PLATFORM##*/}-${SOURCE_DIGEST#sha256:}}
 readonly CONFLICT_TAG="$SOURCE_REPOSITORY:dsh-offline-conflict-${$}-${RANDOM}"
 readonly PRIOR_TAG="local/dsh-offline-prior-${$}-${RANDOM}:test"
 
@@ -118,8 +118,18 @@ fi
 
 tar -xOf "$archive" manifest.json | jq -e --arg tag "$TEST_ARCHIVE_TAG" \
   'length == 1 and .[0].RepoTags == [$tag]' >/dev/null
-tar -xOf "$archive" index.json | jq -e \
-  --arg digest "$SOURCE_DIGEST" --arg refName "${TEST_ARCHIVE_TAG##*:}" '
+config_path=$(tar -xOf "$archive" manifest.json | jq -er '.[0].Config')
+case "$config_path" in
+  blobs/sha256/*) config_digest="sha256:${config_path##*/}" ;;
+  [0-9a-f][0-9a-f]*.json) config_digest="sha256:${config_path%.json}" ;;
+  *) fail 'archive config path is not content-addressed' ;;
+esac
+[[ "$config_digest" =~ ^sha256:[0-9a-f]{64}$ ]] || fail 'archive config digest is malformed'
+test "$(tar -xOf "$archive" "$config_path" | sha256sum | cut -d' ' -f1)" = \
+  "${config_digest#sha256:}" || fail 'archive config blob checksum is invalid'
+if [[ "$SOURCE_IMAGE_ID" == "$SOURCE_DIGEST" ]]; then
+  tar -xOf "$archive" index.json | jq -e \
+    --arg digest "$SOURCE_DIGEST" --arg refName "${TEST_ARCHIVE_TAG##*:}" '
     ([.manifests[] | select(.digest == $digest)] | length == 1) and
     ([.manifests[] | select(.annotations["org.opencontainers.image.ref.name"] == $refName)]
       | length == 1 and .[0].digest == $digest) and
@@ -127,6 +137,10 @@ tar -xOf "$archive" index.json | jq -e \
       .digest == $digest or
       .annotations["io.containerd.manifest.subject"] == $digest))
   ' >/dev/null
+else
+  test "$config_digest" = "$SOURCE_IMAGE_ID" ||
+    fail 'classic-store archive config does not match source image ID'
+fi
 
 # A fresh GitHub runner may destructively simulate a clean repository namespace.
 # Local runs keep the user's source association intact unless explicitly opted in.
@@ -134,11 +148,11 @@ if [[ "$CLEAN_LOAD_REQUIRED" == 1 ]]; then
   source_removed=1
   docker image rm "$SOURCE_IMAGE" >/dev/null
   docker image rm "$TEST_ARCHIVE_TAG" >/dev/null
-  if docker image inspect "$SOURCE_IMAGE" >/dev/null 2>&1; then
-    fail 'digest-qualified source unexpectedly remained before clean load'
+  if docker image inspect "$TEST_ARCHIVE_TAG" >/dev/null 2>&1; then
+    fail 'archive tag unexpectedly remained before clean load'
   fi
   docker load --input "$archive" >/dev/null
-  test "$(docker image inspect "$SOURCE_IMAGE" --format '{{.Id}} {{.Os}}/{{.Architecture}}')" = \
+  test "$(docker image inspect "$TEST_ARCHIVE_TAG" --format '{{.Id}} {{.Os}}/{{.Architecture}}')" = \
     "$SOURCE_IMAGE_ID $SOURCE_PLATFORM"
   source_removed=0
 fi

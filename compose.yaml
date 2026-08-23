@@ -5,7 +5,7 @@ services:
     # The official image ships /data and /config as root:root 0755. Prepare
     # only Caddy's two application subdirectories, then exit before either
     # long-running service starts.
-    image: caddy:2.11.4@sha256:1172d4213087d3fc30bafc7ff2c2896180eb0c41ff7f75f315568fb36cabdcba
+    image: ${CADDY_IMAGE:-caddy:2.11.4@sha256:1172d4213087d3fc30bafc7ff2c2896180eb0c41ff7f75f315568fb36cabdcba}
     pull_policy: never
     platform: linux/arm64
     network_mode: none
@@ -78,7 +78,7 @@ services:
     # Docker Hub's immutable multi-platform index for Caddy 2.11.4. The
     # linux/arm64 child manifest is selected by platform above and recorded in
     # the release image-lock during bundle creation.
-    image: caddy:2.11.4@sha256:1172d4213087d3fc30bafc7ff2c2896180eb0c41ff7f75f315568fb36cabdcba
+    image: ${CADDY_IMAGE:-caddy:2.11.4@sha256:1172d4213087d3fc30bafc7ff2c2896180eb0c41ff7f75f315568fb36cabdcba}
     pull_policy: never
     platform: linux/arm64
     network_mode: service:dsh

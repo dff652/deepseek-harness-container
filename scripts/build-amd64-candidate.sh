@@ -95,7 +95,8 @@ jq \
   "$REPO_ROOT/policy/image-lock.json" > "$ARTIFACT_DIR/amd64-candidate-lock.json"
 
 cp "$REPO_ROOT/compose.yaml" "$REPO_ROOT/compose.amd64.yaml" \
-  "$REPO_ROOT/Caddyfile" "$REPO_ROOT/.env.example" "$ARTIFACT_DIR/"
+  "$REPO_ROOT/Caddyfile" "$ARTIFACT_DIR/"
+cp "$REPO_ROOT/.env.amd64.example" "$ARTIFACT_DIR/.env.example"
 printf '%s\n' \
   'LOCAL AMD64 CANDIDATE ONLY: this is not ARM production evidence and includes no SBOM, provenance or signature.' \
   > "$ARTIFACT_DIR/CANDIDATE-NOT-RELEASE.txt"
