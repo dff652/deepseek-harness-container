@@ -32,6 +32,7 @@ grep -Fq 'tests/haproxy-contract.sh' "$workflow" || fail "HAProxy config contrac
 grep -Fq 'tests/haproxy-runtime.sh' "$workflow" || fail "HAProxy direct runtime contract is not run"
 grep -Fq 'tests/haproxy-compose-runtime.sh' "$workflow" || fail "HAProxy Compose runtime contract is not run"
 grep -Fq 'tests/offline-image-archive.sh' "$workflow" || fail "offline image archive clean-load contract is not run"
+grep -Fq 'SOURCE_PLATFORM=linux/amd64 CLEAN_LOAD_REQUIRED=1' "$workflow" || fail "AMD64 workflow does not require a destructive clean-load proof"
 grep -Fq 'DOCKER_BUILD_RECORD_UPLOAD: "false"' "$workflow" || fail "automatic PR build-record upload is not disabled"
 grep -Fq 'available_kib' "$workflow" || fail "disk availability preflight missing"
 grep -Fq 'docker-system-df-before.txt' "$workflow" || fail "Docker disk evidence missing"

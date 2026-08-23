@@ -6,9 +6,16 @@ readonly ROOT
 readonly SOURCE_IMAGE=${SOURCE_IMAGE:-haproxy:3.4.3-alpine3.24@sha256:c7f5037a567378929d0aba734eb78b73497209c72456519420ce5e68a42d60ac}
 readonly SOURCE_DIGEST=${SOURCE_IMAGE##*@}
 readonly SOURCE_PLATFORM=${SOURCE_PLATFORM:-linux/amd64}
-readonly TEST_REPOSITORY="local/dsh-offline-archive-${$}-${RANDOM}"
-readonly TEST_SOURCE_TAG="$TEST_REPOSITORY:3.4.3"
-readonly TEST_ARCHIVE_TAG="$TEST_REPOSITORY:dsh-offline-${SOURCE_PLATFORM##*/}-${SOURCE_DIGEST#sha256:}"
+readonly CLEAN_LOAD_REQUIRED=${CLEAN_LOAD_REQUIRED:-0}
+source_name=${SOURCE_IMAGE%@*}
+source_leaf=${source_name##*/}
+[[ "$source_leaf" == *:* ]] || {
+  echo 'FAIL: SOURCE_IMAGE must include a version tag before its digest' >&2
+  exit 1
+}
+readonly SOURCE_REPOSITORY=${source_name%:*}
+readonly TEST_ARCHIVE_TAG="$SOURCE_REPOSITORY:dsh-offline-contract-${SOURCE_PLATFORM##*/}-${SOURCE_DIGEST#sha256:}"
+readonly CONFLICT_TAG="$SOURCE_REPOSITORY:dsh-offline-conflict-${$}-${RANDOM}"
 readonly PRIOR_TAG="local/dsh-offline-prior-${$}-${RANDOM}:test"
 
 fail() {
@@ -17,28 +24,41 @@ fail() {
 }
 
 command -v docker >/dev/null || fail 'docker is required'
+case "$CLEAN_LOAD_REQUIRED" in 0|1) ;; *) fail 'CLEAN_LOAD_REQUIRED must be 0 or 1' ;; esac
 docker image inspect "$SOURCE_IMAGE" >/dev/null 2>&1 || fail "source image is not loaded: $SOURCE_IMAGE"
 test "$(docker image inspect "$SOURCE_IMAGE" --format '{{.Os}}/{{.Architecture}}')" = \
   "$SOURCE_PLATFORM" || fail 'source image platform does not match SOURCE_PLATFORM'
+SOURCE_IMAGE_ID=$(docker image inspect "$SOURCE_IMAGE" --format '{{.Id}}')
+readonly SOURCE_IMAGE_ID
 
 tmp_dir=$(mktemp -d /tmp/dsh-offline-archive.XXXXXX)
 prior_id=''
+archive=''
+source_removed=0
 cleanup() {
-  for tag in "$TEST_ARCHIVE_TAG" "$TEST_SOURCE_TAG"; do
-    if docker image inspect "$tag" >/dev/null 2>&1; then
-      test "$(docker image inspect "$tag" --format '{{.Id}}')" = "$SOURCE_DIGEST" || exit 2
-      docker image rm "$tag" >/dev/null
+  local status=$?
+  trap - EXIT
+  if [[ $source_removed == 1 ]] && ! docker image inspect "$SOURCE_IMAGE" >/dev/null 2>&1; then
+    if [[ -n "$archive" && -f "$archive" && ! -L "$archive" ]]; then
+      docker load --input "$archive" >/dev/null || status=2
+    else
+      status=2
     fi
-  done
+  fi
+  if docker image inspect "$CONFLICT_TAG" >/dev/null 2>&1; then
+    test "$(docker image inspect "$CONFLICT_TAG" --format '{{.Id}}')" = "$prior_id" || status=2
+    docker image rm "$CONFLICT_TAG" >/dev/null || status=2
+  fi
   if docker image inspect "$PRIOR_TAG" >/dev/null 2>&1; then
-    test "$(docker image inspect "$PRIOR_TAG" --format '{{.Id}}')" = "$prior_id" || exit 2
-    docker image rm "$PRIOR_TAG" >/dev/null
+    test "$(docker image inspect "$PRIOR_TAG" --format '{{.Id}}')" = "$prior_id" || status=2
+    docker image rm "$PRIOR_TAG" >/dev/null || status=2
   fi
-  case "$tmp_dir" in /tmp/dsh-offline-archive.*) ;; *) return 2 ;; esac
+  case "$tmp_dir" in /tmp/dsh-offline-archive.*) ;; *) exit 2 ;; esac
   if [[ -d "$tmp_dir" && ! -L "$tmp_dir" ]]; then
-    find "$tmp_dir" -xdev -depth -mindepth 1 -delete
-    rmdir -- "$tmp_dir"
+    find "$tmp_dir" -xdev -depth -mindepth 1 -delete || status=2
+    rmdir -- "$tmp_dir" || status=2
   fi
+  exit "$status"
 }
 trap cleanup EXIT
 
@@ -49,23 +69,19 @@ if "$ROOT/scripts/save-pinned-image.sh" \
   fail 'archive helper confused a registry port with a required source version tag'
 fi
 
-# Create a disposable repository name for a clean-name load simulation.
-docker image tag "$SOURCE_IMAGE" "$TEST_SOURCE_TAG"
-readonly TEST_SOURCE_REF="$TEST_SOURCE_TAG@$SOURCE_DIGEST"
-
 # A dedicated tag that already points elsewhere must fail closed, never be
 # overwritten. The empty imported image exists only for this negative test.
 tar --create --file "$tmp_dir/empty-rootfs.tar" --files-from /dev/null
 docker import "$tmp_dir/empty-rootfs.tar" "$PRIOR_TAG" >/dev/null
 prior_id=$(docker image inspect "$PRIOR_TAG" --format '{{.Id}}')
-test "$prior_id" != "$SOURCE_DIGEST"
-docker image tag "$PRIOR_TAG" "$TEST_ARCHIVE_TAG"
-if "$ROOT/scripts/save-pinned-image.sh" "$TEST_SOURCE_REF" "$SOURCE_PLATFORM" \
-    "$TEST_ARCHIVE_TAG" "$tmp_dir/rejected.tar" >/dev/null 2>&1; then
+test "$prior_id" != "$SOURCE_IMAGE_ID"
+docker image tag "$PRIOR_TAG" "$CONFLICT_TAG"
+if "$ROOT/scripts/save-pinned-image.sh" "$SOURCE_IMAGE" "$SOURCE_PLATFORM" \
+    "$CONFLICT_TAG" "$tmp_dir/rejected.tar" >/dev/null 2>&1; then
   fail 'archive helper overwrote a dedicated tag that pointed elsewhere'
 fi
-test "$(docker image inspect "$TEST_ARCHIVE_TAG" --format '{{.Id}}')" = "$prior_id"
-docker image rm "$TEST_ARCHIVE_TAG" >/dev/null
+test "$(docker image inspect "$CONFLICT_TAG" --format '{{.Id}}')" = "$prior_id"
+docker image rm "$CONFLICT_TAG" >/dev/null
 docker image rm "$PRIOR_TAG" >/dev/null
 
 # Force docker-save failure. The new dedicated tag remains as an intentional,
@@ -81,21 +97,21 @@ printf '%s\n' \
   > "$tmp_dir/fail-bin/docker"
 chmod 700 "$tmp_dir/fail-bin/docker"
 if PATH="$tmp_dir/fail-bin:$PATH" REAL_DOCKER="$real_docker" \
-    "$ROOT/scripts/save-pinned-image.sh" "$TEST_SOURCE_REF" "$SOURCE_PLATFORM" \
+    "$ROOT/scripts/save-pinned-image.sh" "$SOURCE_IMAGE" "$SOURCE_PLATFORM" \
     "$TEST_ARCHIVE_TAG" "$tmp_dir/forced-failure.tar" >/dev/null 2>&1; then
   fail 'archive helper unexpectedly succeeded when docker save failed'
 fi
 test ! -e "$tmp_dir/forced-failure.tar"
-test "$(docker image inspect "$TEST_ARCHIVE_TAG" --format '{{.Id}}')" = "$SOURCE_DIGEST"
+test "$(docker image inspect "$TEST_ARCHIVE_TAG" --format '{{.Id}}')" = "$SOURCE_IMAGE_ID"
 
 archive="$tmp_dir/image.tar"
-if "$ROOT/scripts/save-pinned-image.sh" "$TEST_SOURCE_REF" "$SOURCE_PLATFORM" \
+if "$ROOT/scripts/save-pinned-image.sh" "$SOURCE_IMAGE" "$SOURCE_PLATFORM" \
     local/wrong-repository:3.4.3 "$archive" >/dev/null 2>&1; then
   fail 'archive helper accepted a different repository'
 fi
-"$ROOT/scripts/save-pinned-image.sh" "$TEST_SOURCE_REF" "$SOURCE_PLATFORM" \
+"$ROOT/scripts/save-pinned-image.sh" "$SOURCE_IMAGE" "$SOURCE_PLATFORM" \
   "$TEST_ARCHIVE_TAG" "$archive"
-if "$ROOT/scripts/save-pinned-image.sh" "$TEST_SOURCE_REF" "$SOURCE_PLATFORM" \
+if "$ROOT/scripts/save-pinned-image.sh" "$SOURCE_IMAGE" "$SOURCE_PLATFORM" \
     "$TEST_ARCHIVE_TAG" "$archive" >/dev/null 2>&1; then
   fail 'archive helper overwrote an existing output'
 fi
@@ -112,20 +128,25 @@ tar -xOf "$archive" index.json | jq -e \
       .annotations["io.containerd.manifest.subject"] == $digest))
   ' >/dev/null
 
-# Remove both names to simulate a clean repository namespace, then load only
-# the archive. A different-tag digest-qualified reference must resolve again.
-docker image rm "$TEST_SOURCE_TAG" >/dev/null
-docker image rm "$TEST_ARCHIVE_TAG" >/dev/null
-if docker image inspect "$TEST_SOURCE_REF" >/dev/null 2>&1; then
-  fail 'digest-qualified test repository unexpectedly remained before clean load'
+# A fresh GitHub runner may destructively simulate a clean repository namespace.
+# Local runs keep the user's source association intact unless explicitly opted in.
+if [[ "$CLEAN_LOAD_REQUIRED" == 1 ]]; then
+  source_removed=1
+  docker image rm "$SOURCE_IMAGE" >/dev/null
+  docker image rm "$TEST_ARCHIVE_TAG" >/dev/null
+  if docker image inspect "$SOURCE_IMAGE" >/dev/null 2>&1; then
+    fail 'digest-qualified source unexpectedly remained before clean load'
+  fi
+  docker load --input "$archive" >/dev/null
+  test "$(docker image inspect "$SOURCE_IMAGE" --format '{{.Id}} {{.Os}}/{{.Architecture}}')" = \
+    "$SOURCE_IMAGE_ID $SOURCE_PLATFORM"
+  source_removed=0
 fi
-docker load --input "$archive" >/dev/null
-test "$(docker image inspect "$TEST_SOURCE_REF" --format '{{.Id}} {{.Os}}/{{.Architecture}}')" = \
-  "$SOURCE_DIGEST $SOURCE_PLATFORM"
 
 grep -Fq "scripts/save-pinned-image.sh\" \"\$CADDY_REF\" linux/amd64" \
   "$ROOT/scripts/build-amd64-candidate.sh" || fail 'local AMD64 Caddy archive can lose RepoTags'
 grep -Fq "scripts/save-pinned-image.sh\" \"\$CADDY_REF\" linux/arm64" \
   "$ROOT/scripts/build-candidate.sh" || fail 'local ARM64 Caddy archive can lose RepoTags'
 
-printf 'PASS: dedicated tagged archive preserves exact child and resolves after clean load\n'
+printf 'PASS: dedicated tagged archive preserves exact child (clean-load=%s)\n' \
+  "$CLEAN_LOAD_REQUIRED"

@@ -83,7 +83,7 @@ jobs:
       - name: Run isolated non-publishing HAProxy PoC
         run: |
           docker pull --platform linux/amd64 "$HAPROXY_REF"
-          SOURCE_IMAGE="$HAPROXY_REF" SOURCE_PLATFORM=linux/amd64 \
+          SOURCE_IMAGE="$HAPROXY_REF" SOURCE_PLATFORM=linux/amd64 CLEAN_LOAD_REQUIRED=1 \
             bash tests/offline-image-archive.sh
           CONTRACT_DSH_IMAGE="$IMAGE_TAG" \
             CONTRACT_PLATFORM=linux/amd64 \

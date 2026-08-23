@@ -22,6 +22,7 @@ grep -Fq 'tests/haproxy-contract.sh' "$workflow" || fail "native HAProxy config 
 grep -Fq 'tests/haproxy-runtime.sh' "$workflow" || fail "native HAProxy direct runtime contract is not run"
 grep -Fq 'tests/haproxy-compose-runtime.sh' "$workflow" || fail "native HAProxy Compose runtime contract is not run"
 grep -Fq 'tests/offline-image-archive.sh' "$workflow" || fail "native offline image archive clean-load contract is not run"
+grep -Fq 'SOURCE_PLATFORM=linux/arm64 CLEAN_LOAD_REQUIRED=1' "$workflow" || fail "native workflow does not require a destructive clean-load proof"
 grep -Fq 'del(.images.binfmt, .images.arm64Probe)' "$workflow" || fail "QEMU-only tool identities remain in the native lock"
 grep -Fq 'buildx-version.txt' "$workflow" || fail "native Buildx version evidence missing"
 grep -Fq 'builder-inspect.txt' "$workflow" || fail "native builder evidence missing"
