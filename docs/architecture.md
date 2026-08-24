@@ -113,6 +113,15 @@ form one appliance. Upgrade and rollback recreate them together. Tests must
 cover DSH restart, gateway restart and full Compose recreation rather than
 assume the old namespace attachment stays correct.
 
+Do not restart both services concurrently with
+`docker compose restart dsh caddy`. A local AMD64 lifecycle test on 2026-08-24
+reproduced an OCI runtime race while Caddy was reattaching to DSH's shared
+network namespace. Restart Caddy alone when only the gateway changes. To
+restart DSH, stop Caddy first, restart DSH, then run
+`docker compose up -d --wait --no-build --pull never` to restore the dependency
+order. For upgrades and rollback, recreate the complete appliance while
+retaining the approved application and CA volumes.
+
 Binding `${DSH_LAN_IP}:443` is also a cold-start dependency. The static address
 must exist before Compose creates the service. A host startup unit must wait for
 `network-online.target`, verify the exact address and use bounded retries;

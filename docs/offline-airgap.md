@@ -4,6 +4,32 @@
 
 本文记录 deepseek-harness-container 的目标交付边界：在一台没有外网、没有域名的 Linux ARM64 内网主机上，用 Docker Compose 启动 DSH 和 Caddy，并由内网客户端通过 HTTPS 访问。宿主机 systemd 安装是另一个产品和验收记录，不与本方案混用。
 
+## 2026-08-24 本机 AMD64 候选复验
+
+本机从提交 `ee7580d…` 重新构建了 AMD64 候选。生成的本地目录为
+`artifacts/candidate-amd64.jsBlAF/`，其 `SHA256SUMS` 中 11 个成员全部通过；
+DSH manifest 为 `sha256:a6099fa8…`、config 为 `sha256:ceb0c7b8…`，Caddy
+AMD64 child 为 `sha256:98eb57d8…`。该目录是本机候选证据，不是已发布制品。
+
+验证使用 `--no-build --pull never` 和仅绑定 `127.0.0.1:443` 的临时 Compose
+项目，确认：
+
+- DSH `0.1.1-rc.1`、Node `24.19.0` 和四个原生模块在禁网 runtime smoke
+  中通过；
+- 使用 Caddy 内部 CA 而非 `-k` 时，未认证为 401、认证为 200，错误 Origin
+  和 cross-site 为 403，错误 Host 为 421；
+- DSH 以 `10001:10001`、只读 rootfs、`cap_drop: ALL` 和
+  `no-new-privileges` 运行，3080 未发布，批准的 workspace 可写；
+- Caddy 单独重启、先停 Caddy 后重启 DSH、保留卷的整栈重建均通过，内部
+  CA 和 workspace 数据保持不变。
+
+不要执行 `docker compose restart dsh caddy` 并发重启。Caddy 使用
+`network_mode: service:dsh` 共享 DSH 的网络命名空间，本机实测并发 restart
+会产生 OCI runtime 命名空间竞态。维护时将二者视为一个耦合设备：网关单独
+重启可直接执行；DSH 重启前先停 Caddy，再按依赖顺序 `up -d --wait`；升级、
+回滚和冷启动验收优先使用保留卷的整栈 recreate。该 AMD64 结果不替代真实
+ARM64 主机的断网、宿主重启、浏览器、模型和 MCP 验收。
+
 ## 1. 固定版本与证据边界
 
 候选版本必须使用完整、可复现的版本元数据：
