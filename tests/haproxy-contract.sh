@@ -36,7 +36,7 @@ cleanup() {
 trap cleanup EXIT
 mkdir -p -- "$tmp_dir/workspace"
 
-export DSH_IMAGE=${CONTRACT_DSH_IMAGE:-local/dsh:0.1.1-rc.1-amd64}
+export DSH_IMAGE=${CONTRACT_DSH_IMAGE:-local/dsh:0.1.1-rc.2-amd64}
 export DSH_PLATFORM=${CONTRACT_PLATFORM:-linux/amd64}
 export DSH_LAN_IP='192.0.2.10'
 export DSH_WORKSPACE="$tmp_dir/workspace"

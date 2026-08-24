@@ -10,20 +10,20 @@ development capability boundary.
 
 ## Project status
 
-**Local and GitHub-native AMD64 plus QEMU and GitHub-native ARM64 candidates
-built — the local images passed the shared runtime, native-module, Compose and
-Caddy HTTPS gateway acceptance; final GitHub-native candidates also passed
-classic-Docker clean-load tests for both Caddy and HAProxy before their
-build/runtime/bundle gates completed. No container image has been published,
-released or deployed.**
+**DSH `0.1.1-rc.2` now has local native AMD64 and QEMU ARM64 candidates. Both
+passed the shared runtime and native-module boundary; the default Caddy and
+isolated HAProxy gateway profiles passed local dual-architecture tests. An
+isolated AMD64 rc.2 appliance is running locally on HTTPS 8443 for validation.
+No image has been pushed, published, released or deployed to production.**
 
-The older local candidates remain historical evidence. The current source uses
+The rc.1 local and GitHub-native candidates remain historical evidence. The
+current rc.2 source uses
 the exact Node `24.19.0-bookworm-slim` image only as the build
 stage and copies DSH into pinned, shell-less Distroless Node 24 Debian 13
 runtime children. AMD64-native and ARM64-QEMU images passed the
 network-disabled runtime/native-module boundary. A same-tool/database scan
 reduced DSH High/Critical matches from 24 to 4 on both architectures; the
-pinned Caddy image still has 35 AMD64 matches. The Docker Hub workflow
+pinned Caddy image has 35 matches on each scanned architecture. The Docker Hub workflow
 therefore remains fail-closed; this is not yet a publishable image or
 production-ARM acceptance.
 
@@ -35,24 +35,22 @@ High records (one advisory) each, making the comparable DSH+HAProxy appliance
 six records per architecture. That is an improvement, not a release approval:
 native production ARM, formal retained supply-chain evidence and the empty-
 exception policy still block adoption. Caddy remains the default profile.
-The native AMD64/ARM64 build-only workflows now contain this isolated test.
-Runs `32664544119` and `32664545874` passed it on source `8b9ce04…`; HAProxy
+The native AMD64/ARM64 build-only workflows contain this isolated test.
+Historical rc.1 runs `32664544119` and `32664545874` passed it on source
+`8b9ce04…`; HAProxy
 remains an isolated non-publishing profile and is not included in the default
 Caddy bundle.
 
-The earlier corrected amd64 candidate records DSH image ID `sha256:5a7c4f1a…` and OCI
-config digest `sha256:5e82d2be…`; its runtime smoke
-also loads Koffi, node-pty, Landlock and Sharp with networking disabled. The
-local appliance run used the exported Caddy root CA (not `-k`) and proved
-401 without credentials, 200 with credentials, 421 for an unapproved Host,
-403 for a mismatched Origin, healthy services and no published port 3080.
-The latest shell-less QEMU ARM64 candidate records image ID
-`sha256:16cd5261…` and config digest `sha256:a6cb08c0…`; its DSH version,
-native modules, loopback Web, read-only root and UID 10001 checks passed. Its
-full ARM Compose/Caddy appliance remains pending. The exact AMD64 image passed
-a fresh-volume Compose cold start plus trusted-CA 401/200,
-bad-Host 421, bad-Origin 403 and no-3080 checks.
-GitHub [native AMD64 run 32664544119](https://github.com/dff652/deepseek-harness-container/actions/runs/32664544119)
+The current rc.2 AMD64 candidate records manifest `sha256:3cea6dff…` and config
+`sha256:783f744f…`; the QEMU ARM64 candidate records manifest
+`sha256:0c1fe2ec…` and config `sha256:c3511761…`. Both load Koffi, node-pty,
+Landlock and Sharp with networking disabled and pass the loopback Web,
+read-only-root and UID 10001 checks. Caddy and HAProxy Compose acceptance passed
+on native AMD64 and QEMU ARM64. The persistent local AMD64 test appliance was
+upgraded in place to rc.2 and passed trusted-CA WebUI, 401/200/421/403 and
+no-container-3080 checks on port 8443 without changing the host systemd DSH.
+The last GitHub-native evidence is still historical rc.1. GitHub
+[native AMD64 run 32664544119](https://github.com/dff652/deepseek-harness-container/actions/runs/32664544119)
 rebuilt source `8b9ce04…`, producing DSH manifest `sha256:fb8fad14…` and
 config `sha256:49d9d255…`. GitHub
 [native ARM run 32664545874](https://github.com/dff652/deepseek-harness-container/actions/runs/32664545874)
@@ -73,13 +71,13 @@ The candidate targets this exact tuple:
 
 | Component | Candidate pin | State |
 |---|---:|---|
-| DeepSeek Harness | `0.1.1-rc.1` | AMD64 local/GitHub native plus ARM64 QEMU/GitHub native candidates passed; production ARM pending |
-| DSH tag/commit | `dsh-v0.1.1-rc.1` / `528c682e061696f5a160f363f236ecbf53cbd006` | Verified upstream identity |
+| DeepSeek Harness | `0.1.1-rc.2` | local AMD64 and QEMU ARM64 candidates passed; native GitHub rc.2 and production ARM pending |
+| DSH tag/commit | `dsh-v0.1.1-rc.2` / `b150a551b8d465e31e418e1b2eaf5e79bbb7d28e` | Tag commit and npm integrity independently pinned; npm metadata does not bind them cryptographically |
 | Node.js | `24.19.0` | Bookworm build image plus Distroless Debian 13 production runtime locked per architecture |
 | pnpm | `11.7.0` | Locked with Corepack integrity |
 | Caddy | `2.11.4` | OCI index plus AMD64/ARM64 child digests locked |
 | HAProxy alternative | `3.4.3-alpine3.24` | isolated exact-child local/GitHub-native AMD64/ARM64 PoC passed; not adopted |
-| Production target | `linux/arm64`, glibc | QEMU and GitHub native candidates passed; production ARM pending |
+| Production target | `linux/arm64`, glibc | rc.2 QEMU passed; GitHub-native evidence is historical rc.1; rc.2 native and production ARM pending |
 | Local test target | `linux/amd64`, glibc | native runtime and Compose/Caddy acceptance passed |
 
 No `latest`, branch head, machine path, private IP, credential or unresolved
@@ -133,9 +131,9 @@ before running it.
 The manual Docker Hub workflow maintains three candidate-only tags:
 
 ```text
-dff652/deepseek-harness-container:0.1.1-rc.1-amd64-candidate
-dff652/deepseek-harness-container:0.1.1-rc.1-arm64-candidate
-dff652/deepseek-harness-container:0.1.1-rc.1-candidate
+dff652/deepseek-harness-container:0.1.1-rc.2-amd64-candidate
+dff652/deepseek-harness-container:0.1.1-rc.2-arm64-candidate
+dff652/deepseek-harness-container:0.1.1-rc.2-candidate
 ```
 
 The last tag is a manifest list containing exactly Linux AMD64 and ARM64. The
@@ -164,6 +162,9 @@ for the update order, tag policy and rollback contract. The
 [vulnerability triage runbook](docs/vulnerability-triage.md) records the
 historical 59-match hold, the verified 39-match Distroless remediation
 snapshot, and the remediation/exception boundary.
+The [rc.2 release-readiness record](docs/rc2-release-readiness.md) separates
+what passed locally from the native-ARM, feature-regression, supply-chain and
+owner-authorization gates that remain open.
 
 ## Design boundaries
 
@@ -313,7 +314,7 @@ deployment remain separate owner-authorized operations.
 
 ## Upstream references
 
-- [DeepSeek Harness `dsh-v0.1.1-rc.1`](https://github.com/deepseek-ai/deepseek-harness/tree/dsh-v0.1.1-rc.1)
+- [DeepSeek Harness `dsh-v0.1.1-rc.2`](https://github.com/deepseek-ai/deepseek-harness/tree/dsh-v0.1.1-rc.2)
 - [Docker Compose networking modes](https://docs.docker.com/compose/how-tos/networking/#change-the-network-mode)
 - [Docker multi-platform builds](https://docs.docker.com/build/building/multi-platform/)
 - [Docker daemon attack surface](https://docs.docker.com/engine/security/#docker-daemon-attack-surface)

@@ -8,7 +8,7 @@ mkdir -p -- "$tmp_dir/workspace"
 
 # Documentation-only test values. They are reserved/test values and are never
 # used as production credentials or topology.
-export DSH_IMAGE='local/dsh:0.1.1-rc.1-arm64'
+export DSH_IMAGE='local/dsh:0.1.1-rc.2-arm64'
 export DSH_LAN_IP='192.0.2.10'
 unset DSH_HTTPS_PORT
 export DSH_EXTERNAL_AUTHORITY='192.0.2.10'
@@ -46,7 +46,7 @@ dsh = services["dsh"]
 caddy = services["caddy"]
 caddy_init = services["caddy-init"]
 
-assert dsh["image"] == "local/dsh:0.1.1-rc.1-arm64", dsh["image"]
+assert dsh["image"] == "local/dsh:0.1.1-rc.2-arm64", dsh["image"]
 assert dsh["platform"] == "linux/arm64", dsh["platform"]
 assert dsh["pull_policy"] == "never", dsh["pull_policy"]
 assert dsh["command"] == ["web", "--host", "127.0.0.1", "--port", "3080", "--no-open"]

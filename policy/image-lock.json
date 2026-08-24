@@ -3,10 +3,10 @@
   "status": "qemu-candidate-built-not-released",
   "target": "linux/arm64",
   "application": {
-    "dshVersion": "0.1.1-rc.1",
-    "dshTag": "dsh-v0.1.1-rc.1",
-    "dshCommit": "528c682e061696f5a160f363f236ecbf53cbd006",
-    "npmIntegrity": "sha512-HVauMT0F7MWUctkxzBcu5PMFc8j0lm0kX+4IbcUsA7Oh+/xv7xhigEDP0SaSOM/kR48U/BldHbZru116DcZz0w==",
+    "dshVersion": "0.1.1-rc.2",
+    "dshTag": "dsh-v0.1.1-rc.2",
+    "dshCommit": "b150a551b8d465e31e418e1b2eaf5e79bbb7d28e",
+    "npmIntegrity": "sha512-UP1UIh6q3Gme/yXRn/QL2P8IsVlv8Shpg22TRJIZPsCRWLm4CBiA1MUvXmJAfsOEETBMLAl+xWPtFw6ICsN3wg==",
     "nodeVersion": "24.19.0",
     "pnpmVersion": "11.7.0"
   },
@@ -24,13 +24,13 @@
   },
   "output": {
     "buildEnvironment": "linux/amd64-buildx-qemu-aarch64",
-    "builtAt": "2026-08-22T06:19:11Z",
-    "imageId": "sha256:16cd526127abdfbc04b98cc74962d640a28bea6deb27ca47805442922dfa68b2",
-    "manifestDigest": "sha256:16cd526127abdfbc04b98cc74962d640a28bea6deb27ca47805442922dfa68b2",
-    "configDigest": "sha256:a6cb08c0a4109b76fd0c79bad24898af0b0623b0916ace3eddc218e7f345e95f",
-    "dshArchiveSha256": "90212b439e25697b09a887697206f2b0986b462cd431126d1900968fc408a286",
+    "builtAt": "2026-08-24T05:03:20Z",
+    "imageId": "sha256:0c1fe2ecb65625c0572751fe6c891b7e802220c0bbf7587938785717053a12a4",
+    "manifestDigest": "sha256:0c1fe2ecb65625c0572751fe6c891b7e802220c0bbf7587938785717053a12a4",
+    "configDigest": "sha256:c35117619e33e0de091d537391348d732d2037e832b94e2c42f517e9671100a6",
+    "dshArchiveSha256": "4b9e963044156db2bd083369e6724435af3bdecd10465de16850436a0e42c6ea",
     "caddyImageId": "sha256:1172d4213087d3fc30bafc7ff2c2896180eb0c41ff7f75f315568fb36cabdcba",
-    "caddyArchiveSha256": "6dfe88045b4559afe2d0e34fe9373b4892bd48bce18649cef6de525547609c0d",
+    "caddyArchiveSha256": "fe7e63b3b7385e546928876508e5868131317b73e56a032ab0bf179381a7927e",
     "sbomSha256": null,
     "provenanceSha256": null
   }

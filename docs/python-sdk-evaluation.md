@@ -26,7 +26,9 @@ stdio. The production runtime wheel contains a single-file Node executable and
 its target-native ripgrep sidecar, so the target does not need a separate Node
 or pnpm installation.
 
-The rc.1 Python release uses PEP 440 version `0.1.1rc1`. PyPI currently carries:
+The recorded Python SDK evidence is still the historical rc.1 release and was
+not upgraded or revalidated as part of the Web appliance's rc.2 update. It uses
+PEP 440 version `0.1.1rc1`; the 2026-08-21 PyPI snapshot carried:
 
 | Artifact | SHA-256 | Size |
 |---|---|---:|

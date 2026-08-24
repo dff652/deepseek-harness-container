@@ -22,7 +22,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
-export DSH_IMAGE='local/dsh:0.1.1-rc.1-amd64'
+export DSH_IMAGE='local/dsh:0.1.1-rc.2-amd64'
 export DSH_LAN_IP='192.0.2.10'
 unset DSH_HTTPS_PORT
 export DSH_EXTERNAL_AUTHORITY='192.0.2.10'
@@ -68,7 +68,7 @@ expected_caddy = (
     "caddy:2.11.4@sha256:"
     "98eb57d882ccd5213d1688764db10c1ca2c58a1ca3a6717a3411ad798f7a423a"
 )
-assert dsh["image"] == "local/dsh:0.1.1-rc.1-amd64"
+assert dsh["image"] == "local/dsh:0.1.1-rc.2-amd64"
 assert dsh["platform"] == "linux/amd64"
 assert caddy["platform"] == "linux/amd64"
 assert caddy_init["platform"] == "linux/amd64"

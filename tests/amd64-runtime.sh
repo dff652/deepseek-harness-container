@@ -18,7 +18,7 @@ trap cleanup EXIT
 test "$(docker image inspect "$IMAGE_REF" --format '{{.Os}}/{{.Architecture}}')" = \
   'linux/amd64'
 test "$(docker run --rm --network none --entrypoint /nodejs/bin/node "$IMAGE_REF" --version)" = 'v24.19.0'
-test "$(docker run --rm --network none "$IMAGE_REF" --version)" = '0.1.1-rc.1'
+test "$(docker run --rm --network none "$IMAGE_REF" --version)" = '0.1.1-rc.2'
 docker run --rm \
   --network none \
   --tmpfs /tmp:rw,noexec,nosuid,nodev,size=64m \
@@ -79,5 +79,12 @@ for attempt in $(seq 1 30); do
 done
 
 test "$(docker exec "$CONTAINER_NAME" /nodejs/bin/node -p 'process.getuid()')" = '10001'
+docker exec "$CONTAINER_NAME" /nodejs/bin/node -e '
+  const fs = require("node:fs");
+  const path = "/var/lib/dsh/attachments/v1/request-images";
+  fs.mkdirSync(path, { recursive: true });
+  fs.writeFileSync(`${path}/permission-smoke`, "ok");
+  if (fs.readFileSync(`${path}/permission-smoke`, "utf8") !== "ok") process.exit(1);
+'
 test -z "$(docker port "$CONTAINER_NAME")"
-printf 'PASS: amd64 distroless DSH runtime, native modules, no shell/package manager, loopback Web and non-root boundary\n'
+printf 'PASS: amd64 rc.2 distroless DSH runtime, native modules, writable request-image state, no shell/package manager, loopback Web and non-root boundary\n'

@@ -56,7 +56,7 @@ The architecture tags are immutable build inputs for the candidate manifest.
 The unsuffixed `-candidate` tag must resolve to an OCI index containing exactly
 `linux/amd64` and `linux/arm64`. The workflow refuses to replace any of the
 three tags. A rebuilt candidate therefore needs a new `CANDIDATE_VERSION`
-(for example `0.1.1-rc.1-r1`) while `DSH_VERSION` continues to record the
+(for example `0.1.1-rc.2-r1`) while `DSH_VERSION` continues to record the
 actual upstream package version.
 
 Do not publish `latest`, silently replace an architecture-specific tag, or
@@ -141,54 +141,41 @@ The checker hard-requires High and Critical blocking and validates the report's
 filter/ignore configuration plus the checksum-bearing Grype database source;
 changing the JSON severity list cannot weaken that invariant.
 
-### Current publication hold (2026-08-22)
+### Current publication hold (2026-08-24)
 
-The latest non-publishing source-specific pair is native AMD64 run
+The current source pins DSH `0.1.1-rc.2`. Local native AMD64 and x86/QEMU
+ARM64 builds passed runtime, native-module, bundle-hash and the Caddy/HAProxy
+gateway contracts. The exact local DSH manifests are `sha256:3cea6dff…`
+(AMD64) and `sha256:0c1fe2ec…` (ARM64). The repository's native GitHub locks
+and runs remain historical rc.1 evidence; native GitHub rc.2 builds have not
+yet run and must not be inferred from the local pair.
+
+A same-tool/database scan of both exact rc.2 architectures found four blocked
+DSH records and 35 blocked Caddy records per architecture. The comparable
+default appliance therefore has 39 High/Critical records on each architecture.
+The isolated HAProxy children each have two blocked records, so DSH plus
+HAProxy has six per architecture. The allowlist remains empty. These counts
+are temporary local evidence rather than retained release attestations and do
+not authorize an exception or gateway switch.
+
+The local AMD64 test appliance now runs rc.2 on isolated HTTPS port 8443. It is
+not a production deployment and did not replace or stop the host systemd DSH.
+The rc.2 permission-default, image normalization, Files API/fallback/quota,
+provider-backed vision, rollback and resource-pressure behavior still requires
+formal regression acceptance. See
+[the rc.2 readiness record](rc2-release-readiness.md) for the exact evidence
+and open gates.
+
+Historical native rc.1 AMD64 run
 [32664544119](https://github.com/dff652/deepseek-harness-container/actions/runs/32664544119)
-and native ARM64 run
+and ARM64 run
 [32664545874](https://github.com/dff652/deepseek-harness-container/actions/runs/32664545874)
-for commit `8b9ce04…`. Both passed runtime, HAProxy/Caddy classic-store
-clean-load and bundle-hash gates; downloaded locks and artifacts were
-independently verified. Their SBOM/provenance fields remain null, so they do
-not satisfy or bypass the publication policy.
+remain useful build-system evidence for source `8b9ce04…`, but neither can be
+promoted as rc.2 evidence. Their SBOM/provenance fields are null.
 
-Distroless runtime-source native ARM64 run
-[32557974575](https://github.com/dff652/deepseek-harness-container/actions/runs/32557974575)
-passed build, runtime, native-module and bundle-hash gates for source commit
-`feb4469…`. Its downloaded lock and every listed bundle checksum were independently
-verified; SBOM/provenance remain null, so the run does not satisfy or bypass
-the publication policy.
-
-Native AMD64 run
-[32559547026](https://github.com/dff652/deepseek-harness-container/actions/runs/32559547026)
-passed the same non-publishing build/runtime/bundle boundary for source commit
-`6bed724…`. Its downloaded checksums, OCI manifest/config, DSH/Caddy archive
-hashes, architecture and candidate lock were independently verified. It also
-retains null SBOM/provenance and does not reduce the vulnerability hold.
-
-Against Grype DB built 2026-08-21, the historical strict empty-exception scan
-found 24 unapproved High/Critical DSH/Bookworm matches and 35 Caddy matches.
-The 2026-08-22 committed Distroless remediation reduced DSH to four matches on
-both AMD64-native and ARM64-QEMU images, while the Caddy AMD64 snapshot remains
-35. The current comparable AMD64 appliance total is therefore 39 match records
-covering 34 unique advisory IDs. Sixteen Caddy matches have a scanner-provided
-fixed version; none of the four Distroless runtime matches do. No finding is
-waived automatically, ARM64 Caddy evidence must still be generated natively,
-and the GitHub Docker Hub secrets remain absent. Follow the
-[vulnerability triage runbook](vulnerability-triage.md) before any exact owned
-and expiring exception is considered.
-
-The isolated HAProxy `3.4.3-alpine3.24` comparison is not part of this Docker
-Hub workflow. Its exact AMD64 and ARM64 children pass local functional tests
-and each scan at two High records, so the comparable DSH+HAProxy count is six
-records per architecture. It still fails the same empty-exception policy and
-lacks native retained supply-chain plus real production-ARM evidence. Adopting
-it would require an explicit gateway decision followed by architecture-specific
-offline archives, SBOM/provenance/license integration and publication-workflow
-changes; local PoC success must not silently alter the Caddy release track.
-
-Repository creation, GitHub push, Docker Hub publication, formal release,
-signing and production deployment remain independent auditable transitions.
+GitHub Actions Docker Hub secrets remain absent. Repository push, Docker Hub
+publication, formal release, signing and production deployment remain separate
+owner-authorized, auditable transitions.
 
 ## Rollback and retention
 

@@ -24,7 +24,7 @@ npx @deepseek-ai/dsh web
 It is appropriate for an online trial. When the package is absent, `npx`
 resolves and fetches it through npm, and the command above does not pin a
 version. A production image instead declares
-`@deepseek-ai/dsh@0.1.1-rc.1`, commits the complete pnpm lock/build policy,
+`@deepseek-ai/dsh@0.1.1-rc.2`, commits the complete pnpm lock/build policy,
 installs during the image build and directly executes the installed `dsh`
 binary at runtime. Container startup performs no npm resolution or download.
 
@@ -113,10 +113,11 @@ The 14 GiB disk is an acceptance constraint. The workflow must record image,
 cache and archive sizes and fail clearly if the dependency closure plus export
 does not fit. A larger runner is not silently selected to hide that failure.
 
-## Local native amd64 regression candidate
+## Local native AMD64 regression candidates
 
-The shared Dockerfile accepts an explicit immutable Node child manifest. On
-2026-08-21 the local x86_64 host built `local/dsh:0.1.1-rc.1-amd64` with Node
+The shared Dockerfile accepts an explicit immutable Node child manifest. As
+historical rc.1 evidence, on 2026-08-21 the local x86_64 host built
+`local/dsh:0.1.1-rc.1-amd64` with Node
 amd64 child `sha256:65932751…` and packaged Caddy amd64 child
 `sha256:98eb57d8…`. Network concurrency was bounded at four while all 504 lock
 entries still passed the registry-backed supply-chain policy.
@@ -129,18 +130,22 @@ node-pty, Landlock and Sharp. The amd64 Compose override then passed trusted-CA
 401/200, bad-Host 421, bad-Origin 403 and healthy-service checks with
 `--no-build --pull never`.
 
-This is a local regression target. It validates the shared container and
+That rc.1 build remains a historical local regression target. It validates the shared container and
 gateway contract faster than QEMU, but it is not ARM64 build, kernel, cold-boot
-or production evidence and is not a multi-architecture release. The latest
-remediation candidate keeps Bookworm only as a build stage and uses exact
-Distroless Node 24 runtime children. AMD64-native and ARM64-QEMU images passed
-the network-disabled module/Web, read-only-root, shell-absence and UID 10001
-checks. The new QEMU image records image `sha256:16cd5261…` and config
-`sha256:a6cb08c0…`; a same-tool scan reduced DSH High/Critical matches from 24
-to 4 on both architectures. Historical native GitHub ARM64 run `32557974575`
-covers its recorded `feb4469…` source build/runtime/bundle boundary. The trusted-CA ARM64
-Compose/Caddy test and all disconnected production-host acceptance still must
-be run on the target ARM host before release.
+or production evidence and is not a multi-architecture release.
+
+The current rc.2 remediation candidate keeps Bookworm only as a build stage
+and uses the same exact Distroless Node 24 runtime children. Its native AMD64
+manifest/config are `sha256:3cea6dff…` / `sha256:783f744f…`; its x86/QEMU
+ARM64 manifest/config are `sha256:0c1fe2ec…` / `sha256:c3511761…`. Both passed
+the network-disabled module/Web, request-image state, read-only-root,
+shell-absence and UID 10001 checks. The Caddy and isolated HAProxy Compose
+profiles also passed on native AMD64 and QEMU ARM64. A same-tool scan reports
+four DSH High/Critical matches on each architecture. Native GitHub rc.2 and all
+disconnected production-host acceptance still must run before release; no
+historical rc.1 GitHub run substitutes for them. See the
+[rc.2 readiness record](rc2-release-readiness.md) for exact evidence and open
+feature/supply-chain gates.
 
 ## GitHub native AMD64
 
@@ -236,7 +241,7 @@ digest and the bundle's own `SHA256SUMS` after download.
 
 ## Upstream references
 
-- [DSH rc.1 root package requirements](https://raw.githubusercontent.com/deepseek-ai/deepseek-harness/dsh-v0.1.1-rc.1/package.json)
+- [DSH rc.2 root package requirements](https://raw.githubusercontent.com/deepseek-ai/deepseek-harness/dsh-v0.1.1-rc.2/package.json)
 - [Google Distroless supported images and security-update model](https://github.com/GoogleContainerTools/distroless)
 - [Distroless Node.js runtime contents](https://github.com/GoogleContainerTools/distroless/blob/main/nodejs/README.md)
 - [Docker multi-platform builds](https://docs.docker.com/build/building/multi-platform/)

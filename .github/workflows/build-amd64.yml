@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     env:
-      IMAGE_TAG: local/dsh:0.1.1-rc.1-amd64
+      IMAGE_TAG: local/dsh:0.1.1-rc.2-amd64
       CADDY_REF: caddy:2.11.4@sha256:98eb57d882ccd5213d1688764db10c1ca2c58a1ca3a6717a3411ad798f7a423a
       CADDY_ARCHIVE_TAG: caddy:dsh-offline-2.11.4-amd64-98eb57d882cc
       HAPROXY_REF: haproxy:3.4.3-alpine3.24@sha256:c7f5037a567378929d0aba734eb78b73497209c72456519420ce5e68a42d60ac
@@ -64,13 +64,13 @@ jobs:
             NODE_BASE_REF=node:24.19.0-bookworm-slim@sha256:65932751ed4073ed02f5c04e494e4b2572a891b7dbea0568a863dc80341bf848
             NODE_RUNTIME_REF=gcr.io/distroless/nodejs24-debian13@sha256:579735ae8373ff1ab6c4aa251480fd17ae6ec1b7f83b1bfc76bf6003d0fb242b
           tags: ${{ env.IMAGE_TAG }}
-          outputs: type=docker,dest=${{ runner.temp }}/dsh-0.1.1-rc.1-amd64.tar
+          outputs: type=docker,dest=${{ runner.temp }}/dsh-0.1.1-rc.2-amd64.tar
           provenance: false
           sbom: false
 
       - name: Load and smoke the AMD64 image
         run: |
-          docker load --input "${RUNNER_TEMP}/dsh-0.1.1-rc.1-amd64.tar"
+          docker load --input "${RUNNER_TEMP}/dsh-0.1.1-rc.2-amd64.tar"
           test "$(docker image inspect "$IMAGE_TAG" --format '{{.Architecture}}')" = amd64
           docker run --rm "$IMAGE_TAG" --version
           bash tests/amd64-runtime.sh "$IMAGE_TAG"
@@ -78,7 +78,7 @@ jobs:
           docker version > "${RUNNER_TEMP}/docker-version.txt"
           docker buildx version > "${RUNNER_TEMP}/buildx-version.txt"
           docker buildx inspect > "${RUNNER_TEMP}/builder-inspect.txt"
-          du -h "${RUNNER_TEMP}/dsh-0.1.1-rc.1-amd64.tar" | tee "${RUNNER_TEMP}/archive-size.txt"
+          du -h "${RUNNER_TEMP}/dsh-0.1.1-rc.2-amd64.tar" | tee "${RUNNER_TEMP}/archive-size.txt"
           df -h / | tee "${RUNNER_TEMP}/disk-after.txt"
 
       - name: Run isolated non-publishing HAProxy PoC
@@ -114,7 +114,7 @@ jobs:
           docker image inspect "$CADDY_REF" > "${RUNNER_TEMP}/caddy-image-inspect.json"
           scripts/save-pinned-image.sh "$CADDY_REF" linux/amd64 \
             "$CADDY_ARCHIVE_TAG" "${RUNNER_TEMP}/bundle/caddy-2.11.4-amd64.tar"
-          cp "${RUNNER_TEMP}/dsh-0.1.1-rc.1-amd64.tar" "${RUNNER_TEMP}/bundle/"
+          cp "${RUNNER_TEMP}/dsh-0.1.1-rc.2-amd64.tar" "${RUNNER_TEMP}/bundle/"
           cp compose.yaml compose.amd64.yaml Caddyfile "${RUNNER_TEMP}/bundle/"
           cp .env.amd64.example "${RUNNER_TEMP}/bundle/.env.example"
           cp "${RUNNER_TEMP}/dsh-image-inspect.json" \
@@ -130,21 +130,21 @@ jobs:
           built_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)
           dsh_image_id=$(docker image inspect "$IMAGE_TAG" --format '{{.Id}}')
           caddy_image_id=$(docker image inspect "$CADDY_REF" --format '{{.Id}}')
-          dsh_archive_sha256=$(sha256sum "${RUNNER_TEMP}/bundle/dsh-0.1.1-rc.1-amd64.tar" | cut -d' ' -f1)
+          dsh_archive_sha256=$(sha256sum "${RUNNER_TEMP}/bundle/dsh-0.1.1-rc.2-amd64.tar" | cut -d' ' -f1)
           caddy_archive_sha256=$(sha256sum "${RUNNER_TEMP}/bundle/caddy-2.11.4-amd64.tar" | cut -d' ' -f1)
-          config_path=$(tar -xOf "${RUNNER_TEMP}/bundle/dsh-0.1.1-rc.1-amd64.tar" manifest.json | jq -er '.[0].Config')
+          config_path=$(tar -xOf "${RUNNER_TEMP}/bundle/dsh-0.1.1-rc.2-amd64.tar" manifest.json | jq -er '.[0].Config')
           case "$config_path" in blobs/sha256/*) ;; *) echo "unexpected OCI config path: $config_path" >&2; exit 1;; esac
           config_digest="sha256:${config_path##*/}"
-          test "$(tar -xOf "${RUNNER_TEMP}/bundle/dsh-0.1.1-rc.1-amd64.tar" "$config_path" | sha256sum | cut -d' ' -f1)" = \
+          test "$(tar -xOf "${RUNNER_TEMP}/bundle/dsh-0.1.1-rc.2-amd64.tar" "$config_path" | sha256sum | cut -d' ' -f1)" = \
             "${config_digest#sha256:}"
-          manifest_digest=$(tar -xOf "${RUNNER_TEMP}/bundle/dsh-0.1.1-rc.1-amd64.tar" index.json | jq -er '
+          manifest_digest=$(tar -xOf "${RUNNER_TEMP}/bundle/dsh-0.1.1-rc.2-amd64.tar" index.json | jq -er '
             [.manifests[] | select(.platform.os == "linux" and .platform.architecture == "amd64")]
             | if length == 1 then .[0].digest else error("expected exactly one Linux AMD64 manifest") end
           ')
           manifest_path="blobs/sha256/${manifest_digest#sha256:}"
-          test "$(tar -xOf "${RUNNER_TEMP}/bundle/dsh-0.1.1-rc.1-amd64.tar" "$manifest_path" | sha256sum | cut -d' ' -f1)" = \
+          test "$(tar -xOf "${RUNNER_TEMP}/bundle/dsh-0.1.1-rc.2-amd64.tar" "$manifest_path" | sha256sum | cut -d' ' -f1)" = \
             "${manifest_digest#sha256:}"
-          test "$(tar -xOf "${RUNNER_TEMP}/bundle/dsh-0.1.1-rc.1-amd64.tar" "$manifest_path" | jq -er '.config.digest')" = \
+          test "$(tar -xOf "${RUNNER_TEMP}/bundle/dsh-0.1.1-rc.2-amd64.tar" "$manifest_path" | jq -er '.config.digest')" = \
             "$config_digest"
           jq \
             --arg builtAt "$built_at" \

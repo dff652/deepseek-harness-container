@@ -49,7 +49,7 @@ RUN pnpm --config.trust-lockfile=true install --prod --frozen-lockfile --offline
 FROM --platform=${TARGETPLATFORM} ${NODE_RUNTIME_REF} AS runtime
 
 LABEL org.opencontainers.image.title="DeepSeek Harness runtime" \
-      org.opencontainers.image.version="0.1.1-rc.1" \
+      org.opencontainers.image.version="0.1.1-rc.2" \
       org.opencontainers.image.vendor="deepseek-harness-container" \
       org.opencontainers.image.source="https://github.com/deepseek-ai/deepseek-harness"
 
@@ -82,7 +82,7 @@ CMD ["web", "--host", "127.0.0.1", "--port", "3080", "--no-open"]
 FROM build AS dev-runtime
 
 LABEL org.opencontainers.image.title="DeepSeek Harness development runtime" \
-      org.opencontainers.image.version="0.1.1-rc.1" \
+      org.opencontainers.image.version="0.1.1-rc.2" \
       org.opencontainers.image.vendor="deepseek-harness-container"
 
 RUN groupadd --gid 10001 dsh \

@@ -1,10 +1,30 @@
 # DSH 容器化离线部署 SOP（ARM64）
 
-> 状态：本机 AMD64 与 QEMU ARM64 候选、GitHub 原生 AMD64/ARM64 候选均已通过相应 runtime；最终 GitHub runs `32664544119`/`32664545874` 还通过了 classic Docker store 的 Caddy/HAProxy clean-load，下载包全部成员（含隐藏 `.env.example`）校验亦通过。生产 ARM 断网验收、SBOM、独立 provenance、签名和镜像发布仍未完成，因此当前仍不是可直接投产的发布镜像。
+> 状态：DSH `0.1.1-rc.2` 的本机原生 AMD64 与 x86/QEMU ARM64 候选已通过 runtime、原生模块、Caddy/HAProxy Compose 与离线包校验；隔离的本机 AMD64 测试实例已升级到 rc.2。GitHub 原生 rc.2、生产 ARM 断网验收、保留的 SBOM/provenance、漏洞处置、签名和镜像发布仍未完成，因此当前仍不是可直接投产的发布镜像。
 
 本文记录 deepseek-harness-container 的目标交付边界：在一台没有外网、没有域名的 Linux ARM64 内网主机上，用 Docker Compose 启动 DSH 和 Caddy，并由内网客户端通过 HTTPS 访问。宿主机 systemd 安装是另一个产品和验收记录，不与本方案混用。
 
-## 2026-08-24 本机 AMD64 候选复验
+## 2026-08-24 rc.2 本机候选复验
+
+本机生成了 `artifacts/candidate-amd64.8otTIG/` 和
+`artifacts/candidate-arm64.F6XyUd/` 两个未发布候选。AMD64 DSH manifest/config
+为 `sha256:3cea6dff…` / `sha256:783f744f…`，QEMU ARM64 为
+`sha256:0c1fe2ec…` / `sha256:c3511761…`；两个目录中列出的全部
+`SHA256SUMS` 成员均通过。两架构均通过禁网原生模块、loopback Web、只读
+rootfs、UID 10001、request-image 状态目录和无 shell/package manager 检查。
+
+Caddy 与隔离 HAProxy profile 的真实 DSH Compose 在 AMD64 和 QEMU ARM64
+均通过。隔离的本机 AMD64 长期测试项目使用 8443，与宿主 systemd DSH 的
+3080 并行；升级到 rc.2 后容器健康，可信 CA/IP-SAN TLS、临时随机凭据的
+401/200 与 WebUI title、错误 Origin/Host/cross-site 以及容器无 3080 发布
+均通过。测试后恢复原 bcrypt 哈希，临时明文未记录；宿主两个 3080 listener
+及其 PID 保持不变。
+
+QEMU 结果仍不能替代真实 ARM64 主机的内核、资源压力、冷启动、模型/MCP、
+图像/Files API、权限 UI 和回滚验收。完整边界见
+[rc.2 发布就绪记录](rc2-release-readiness.md)。
+
+### 历史 rc.1 AMD64 证据
 
 本机从提交 `ee7580d…` 重新构建了 AMD64 候选。生成的本地目录为
 `artifacts/candidate-amd64.jsBlAF/`，其 `SHA256SUMS` 中 11 个成员全部通过；
@@ -63,7 +83,7 @@ AMD64 实测确认默认 443 与自定义 8443 均能返回认证后的 WebUI；
 
 | 组件 | 固定候选版本 | 交付要求 |
 | --- | --- | --- |
-| DeepSeek Harness | @deepseek-ai/dsh@0.1.1-rc.1 | 对应不可变上游标签 dsh-v0.1.1-rc.1，提交 528c682e061696f5a160f363f236ecbf53cbd006；npm 包和依赖必须由锁文件固定 |
+| DeepSeek Harness | @deepseek-ai/dsh@0.1.1-rc.2 | 对应上游标签 dsh-v0.1.1-rc.2 与提交 b150a551b8d465e31e418e1b2eaf5e79bbb7d28e；npm integrity 由锁文件独立固定，npm 元数据不提供与该提交的密码学绑定 |
 | Node.js | 24.19.0 | Linux arm64 运行时；必须记录下载包 SHA-256 |
 | pnpm | 11.7.0 | 仅用于构建/安装依赖，版本写入构建元数据 |
 | Caddy | 2.11.4 | 镜像、二进制和基础镜像必须在最终 image-lock 中记录真实 digest |
@@ -141,7 +161,7 @@ daemon、cgroup、存储和防火墙冷启动正常，后者才执行下面的�
     ├── Caddyfile
     ├── .env.example                 # 仅变量名和说明，不含秘密
     ├── images/
-    │   ├── dsh-0.1.1-rc.1-arm64.tar
+    │   ├── dsh-0.1.1-rc.2-arm64.tar
     │   └── caddy-2.11.4-arm64.tar
     ├── image-lock.json              # 真实 image ID/digest、平台、构建来源
     ├── sbom/
@@ -172,7 +192,7 @@ image-lock.json 在发布前必须包含真实的 DSH/Node/pnpm/Caddy/base-image
     docker buildx build --platform linux/arm64 --tag <已锁定的-dsh-image-ref> --load .
 
     # 生成离线传输包（仅针对 image-lock 中已经验收的镜像）
-    docker save <dsh-image-ref> -o images/dsh-0.1.1-rc.1-arm64.tar
+    docker save <dsh-image-ref> -o images/dsh-0.1.1-rc.2-arm64.tar
     CADDY_REF='caddy:2.11.4@sha256:1172d4213087d3fc30bafc7ff2c2896180eb0c41ff7f75f315568fb36cabdcba'
     CADDY_ARCHIVE_TAG='caddy:dsh-offline-2.11.4-arm64-1172d4213087'
     scripts/save-pinned-image.sh "$CADDY_REF" linux/arm64 \
@@ -201,7 +221,7 @@ docker save 不保存卷、凭据、Caddy 内部 CA 私钥或 DSH 工作区。�
     cd "$BUNDLE_DIR"
     sha256sum --check SHA256SUMS
 
-    docker load --input images/dsh-0.1.1-rc.1-arm64.tar
+    docker load --input images/dsh-0.1.1-rc.2-arm64.tar
     docker load --input images/caddy-2.11.4-arm64.tar
     docker image inspect <dsh-image-ref> --format '{{.Os}}/{{.Architecture}} {{.Id}}'
     docker image inspect 'caddy:dsh-offline-2.11.4-arm64-1172d4213087' \

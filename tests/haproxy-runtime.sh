@@ -9,7 +9,7 @@ ROOT=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
 readonly ROOT
 readonly HAPROXY_IMAGE=${HAPROXY_IMAGE:-haproxy:3.4.3-alpine3.24@sha256:c7f5037a567378929d0aba734eb78b73497209c72456519420ce5e68a42d60ac}
 readonly HAPROXY_PLATFORM=${HAPROXY_PLATFORM:-linux/amd64}
-readonly BACKEND_IMAGE=${BACKEND_IMAGE:-local/dsh:0.1.1-rc.1-amd64}
+readonly BACKEND_IMAGE=${BACKEND_IMAGE:-local/dsh:0.1.1-rc.2-amd64}
 readonly BACKEND_PLATFORM=${BACKEND_PLATFORM:-linux/amd64}
 readonly TEST_LABEL='io.deepseek-harness-container.test=haproxy-runtime'
 readonly TEST_LABEL_VALUE='haproxy-runtime'

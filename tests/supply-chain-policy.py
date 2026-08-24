@@ -26,7 +26,7 @@ def base_documents() -> dict[str, object]:
         "architecture": "amd64",
         "os": "linux",
         "labels": {
-            "org.opencontainers.image.version": "0.1.1-rc.1",
+            "org.opencontainers.image.version": "0.1.1-rc.2",
             "org.opencontainers.image.revision": SOURCE_REVISION,
         },
     }
@@ -58,8 +58,8 @@ def base_documents() -> dict[str, object]:
             "artifacts": [
                 {
                     "name": "@deepseek-ai/dsh",
-                    "version": "0.1.1-rc.1",
-                    "purl": "pkg:npm/%40deepseek-ai/dsh@0.1.1-rc.1",
+                    "version": "0.1.1-rc.2",
+                    "purl": "pkg:npm/%40deepseek-ai/dsh@0.1.1-rc.2",
                     "licenses": [{"spdxExpression": "MIT"}],
                     "locations": [
                         {"path": "/opt/dsh/runtime/node_modules/dsh/package.json"}
@@ -234,7 +234,7 @@ class SupplyChainPolicyTests(unittest.TestCase):
                 "--platform",
                 "linux/amd64",
                 "--dsh-version",
-                "0.1.1-rc.1",
+                "0.1.1-rc.2",
                 "--caddy-version",
                 "2.11.4",
                 "--node-base-digest",

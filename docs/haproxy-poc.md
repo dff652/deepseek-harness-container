@@ -152,7 +152,7 @@ offline channel. On the target:
 ```sh
 sha256sum --check SHA256SUMS
 sha256sum --check haproxy-3.4.3-arm64.tar.sha256
-docker load --input dsh-0.1.1-rc.1-arm64.tar
+docker load --input dsh-0.1.1-rc.2-arm64.tar
 docker load --input haproxy-3.4.3-arm64.tar
 export HAPROXY_IMAGE='haproxy:dsh-offline-3.4.3-arm64-0fe6e31a91ad'
 test "$(docker image inspect "$HAPROXY_IMAGE" \
@@ -193,7 +193,7 @@ The repository provides three levels:
 ```sh
 ./tests/haproxy-contract.sh
 ./tests/haproxy-runtime.sh
-DSH_IMAGE=local/dsh:0.1.1-rc.1-amd64 DSH_PLATFORM=linux/amd64 \
+DSH_IMAGE=local/dsh:0.1.1-rc.2-amd64 DSH_PLATFORM=linux/amd64 \
   ./tests/haproxy-compose-runtime.sh
 ```
 

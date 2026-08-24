@@ -13,7 +13,7 @@ DSH Web 只监听容器内 `127.0.0.1:3080`。Caddy 与 DSH 共享网络命名�
 Caddy 是唯一的 LAN 入口，只发布经过认证的 HTTPS 端口。DSH 的 3080 不发布
 到宿主机或 LAN。
 
-这是当前 rc.1 候选的部署边界，不代表 DeepSeek 官方提供了容器镜像。DSH、
+这是当前 rc.2 候选的部署边界，不代表 DeepSeek 官方提供了容器镜像。DSH、
 Node、pnpm、Caddy、基础镜像、插件和 provider 必须由部署项目分别固定版本、
 digest、架构和验收证据。
 

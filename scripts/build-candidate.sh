@@ -5,7 +5,7 @@ REPO_ROOT=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
 readonly REPO_ROOT
 readonly BUILDER_NAME='dsh-arm64-qemu'
 readonly BUILDKIT_REF='moby/buildkit:v0.29.0@sha256:0039c1d47e8748b5afea56f4e85f14febaf34452bd99d9552d2daa82262b5cc5'
-readonly IMAGE_TAG='local/dsh:0.1.1-rc.1-arm64'
+readonly IMAGE_TAG='local/dsh:0.1.1-rc.2-arm64'
 readonly NODE_BASE_REF='node:24.19.0-bookworm-slim@sha256:c133efe216ffb6e785ed9a8be55a29fcb86775e8008ae0a9f0ed6af4f175bb03'
 readonly NODE_RUNTIME_REF='gcr.io/distroless/nodejs24-debian13@sha256:8f5b4fe36a991614a46469e4ec06f65838a2bc22d61f560aac9d40ae62e9ac5a'
 readonly CADDY_REF='caddy:2.11.4@sha256:1172d4213087d3fc30bafc7ff2c2896180eb0c41ff7f75f315568fb36cabdcba'
@@ -34,13 +34,13 @@ docker buildx build \
   --build-arg "NODE_RUNTIME_REF=$NODE_RUNTIME_REF" \
   --tag "$IMAGE_TAG" \
   --metadata-file "$ARTIFACT_DIR/dsh-build-metadata.json" \
-  --output "type=docker,dest=$ARTIFACT_DIR/dsh-0.1.1-rc.1-arm64.tar" \
+  --output "type=docker,dest=$ARTIFACT_DIR/dsh-0.1.1-rc.2-arm64.tar" \
   "$REPO_ROOT"
 
-docker load --input "$ARTIFACT_DIR/dsh-0.1.1-rc.1-arm64.tar"
+docker load --input "$ARTIFACT_DIR/dsh-0.1.1-rc.2-arm64.tar"
 test "$(docker image inspect "$IMAGE_TAG" --format '{{.Os}}/{{.Architecture}}')" = \
   'linux/arm64'
-test "$(docker run --rm --network none "$IMAGE_TAG" --version)" = '0.1.1-rc.1'
+test "$(docker run --rm --network none "$IMAGE_TAG" --version)" = '0.1.1-rc.2'
 "$REPO_ROOT/tests/arm64-runtime.sh" "$IMAGE_TAG"
 docker image inspect "$IMAGE_TAG" > "$ARTIFACT_DIR/dsh-image-inspect.json"
 
@@ -52,13 +52,13 @@ docker image inspect "$CADDY_REF" > "$ARTIFACT_DIR/caddy-image-inspect.json"
 
 dsh_image_id=$(docker image inspect "$IMAGE_TAG" --format '{{.Id}}')
 caddy_image_id=$(docker image inspect "$CADDY_REF" --format '{{.Id}}')
-dsh_archive_sha256=$(sha256sum "$ARTIFACT_DIR/dsh-0.1.1-rc.1-arm64.tar" | cut -d' ' -f1)
+dsh_archive_sha256=$(sha256sum "$ARTIFACT_DIR/dsh-0.1.1-rc.2-arm64.tar" | cut -d' ' -f1)
 caddy_archive_sha256=$(sha256sum "$ARTIFACT_DIR/caddy-2.11.4-arm64.tar" | cut -d' ' -f1)
 manifest_digest=$(jq -r '."containerimage.digest" // empty' "$ARTIFACT_DIR/dsh-build-metadata.json")
-config_path=$(tar -xOf "$ARTIFACT_DIR/dsh-0.1.1-rc.1-arm64.tar" manifest.json | jq -er '.[0].Config')
+config_path=$(tar -xOf "$ARTIFACT_DIR/dsh-0.1.1-rc.2-arm64.tar" manifest.json | jq -er '.[0].Config')
 case "$config_path" in blobs/sha256/*) ;; *) echo "unexpected OCI config path: $config_path" >&2; exit 1;; esac
 config_digest="sha256:${config_path##*/}"
-test "$(tar -xOf "$ARTIFACT_DIR/dsh-0.1.1-rc.1-arm64.tar" "$config_path" | sha256sum | cut -d' ' -f1)" = \
+test "$(tar -xOf "$ARTIFACT_DIR/dsh-0.1.1-rc.2-arm64.tar" "$config_path" | sha256sum | cut -d' ' -f1)" = \
   "${config_digest#sha256:}"
 built_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 
@@ -94,7 +94,7 @@ printf '%s\n' \
 (
   cd "$ARTIFACT_DIR"
   sha256sum \
-    dsh-0.1.1-rc.1-arm64.tar \
+    dsh-0.1.1-rc.2-arm64.tar \
     caddy-2.11.4-arm64.tar \
     compose.yaml Caddyfile .env.example arm64-candidate-lock.json \
     CANDIDATE-NOT-RELEASE.txt \
