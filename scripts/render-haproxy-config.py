@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Render the HAProxy PoC config from deployment-owned values.
+"""Render the HAProxy candidate config from deployment-owned values.
 
 The input template is tracked, but the expected IP authority and crypt hash
 come only from the caller's environment.  The renderer deliberately accepts a
@@ -35,7 +35,7 @@ def reject_control(name: str, value: str) -> None:
         raise SystemExit(f"{name} contains a prohibited control character")
 
 
-def host_authority(ip_text: str) -> str:
+def host_authority(ip_text: str, port_text: str) -> str:
     try:
         address = ipaddress.ip_address(ip_text)
     except ValueError as exc:
@@ -44,7 +44,12 @@ def host_authority(ip_text: str) -> str:
         raise SystemExit("the HAProxy Compose PoC currently supports IPv4 only")
     if address.is_unspecified:
         raise SystemExit("DSH_LAN_IP must not be the wildcard address 0.0.0.0")
-    return str(address)
+    if not port_text.isascii() or not port_text.isdecimal():
+        raise SystemExit("DSH_HTTPS_PORT must be a decimal TCP port")
+    port = int(port_text, 10)
+    if not 1 <= port <= 65535:
+        raise SystemExit("DSH_HTTPS_PORT must be between 1 and 65535")
+    return str(address) if port == 443 else f"{address}:{port}"
 
 
 def write_private(path: pathlib.Path, content: str) -> None:
@@ -82,15 +87,17 @@ def main() -> int:
     username = required_env("DSH_HAPROXY_USERNAME")
     password_hash = required_env("DSH_HAPROXY_PASSWORD_HASH")
     lan_ip = required_env("DSH_LAN_IP")
+    https_port = os.environ.get("DSH_HTTPS_PORT", "443")
     reject_control("DSH_HAPROXY_USERNAME", username)
     reject_control("DSH_HAPROXY_PASSWORD_HASH", password_hash)
     reject_control("DSH_LAN_IP", lan_ip)
+    reject_control("DSH_HTTPS_PORT", https_port)
     if not USERNAME_RE.fullmatch(username):
         raise SystemExit("DSH_HAPROXY_USERNAME must be a single safe HAProxy user token")
     if not SHA256_CRYPT_RE.fullmatch(password_hash):
         raise SystemExit("DSH_HAPROXY_PASSWORD_HASH must be a SHA-256 crypt $5$ hash")
 
-    authority = host_authority(lan_ip)
+    authority = host_authority(lan_ip, https_port)
     template_path = pathlib.Path(args.template)
     template = template_path.read_text(encoding="utf-8")
     replacements = {

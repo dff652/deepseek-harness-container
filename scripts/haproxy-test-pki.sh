@@ -13,9 +13,11 @@ import ipaddress
 import sys
 
 try:
-    ipaddress.ip_address(sys.argv[1])
+    address = ipaddress.ip_address(sys.argv[1])
 except ValueError:
-    raise SystemExit("IP_ADDRESS must be a literal IPv4 or IPv6 address")
+    raise SystemExit("IP_ADDRESS must be a literal IPv4 address")
+if address.version != 4 or address.is_unspecified:
+    raise SystemExit("IP_ADDRESS must be one approved, non-wildcard IPv4 address")
 PY
 
 case "$output_dir" in
@@ -59,7 +61,12 @@ openssl x509 -req -sha256 -days 2 -in "$server_csr" -CA "$ca_cert" -CAkey "$ca_k
   -CAcreateserial -out "$server_cert" -extfile "$server_ext" >/dev/null 2>&1
 chmod 644 -- "$server_cert"
 
+# Verify the actual certificate identity before assembling the HAProxy PEM.
+# This keeps the fixture's IP-SAN contract explicit instead of relying only on
+# a client that may accidentally skip certificate verification.
+openssl verify -CAfile "$ca_cert" -verify_ip "$lan_ip" "$server_cert" >/dev/null
+
 cat "$server_cert" "$ca_cert" "$server_key" > "$server_pem"
 chmod 600 -- "$server_pem"
 rm -f -- "$server_csr" "$server_ext" "$output_dir/ca-cert.srl"
-printf 'PASS: disposable offline HAProxy test PKI created under %s\n' "$output_dir"
+printf 'PASS: disposable offline HAProxy IPv4-SAN test PKI created under %s\n' "$output_dir"

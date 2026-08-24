@@ -162,11 +162,21 @@ HAProxy has six per architecture. The allowlist remains empty. These counts
 are temporary local evidence rather than retained release attestations and do
 not authorize an exception or gateway switch.
 
+Each architecture workflow now also runs the live runtime reachability
+collector on the image it just built and retains the exact-digest JSON in its
+candidate evidence. Non-publishing workflows accept either a zero-blocker or a
+blocked report as evidence, but reject collection/schema failures. The Docker
+Hub workflow runs the same command in `gate` mode after generating scanner
+reports and before policy approval; any `evidence` or `unknown` status stops
+the job. Fixture-only tests cannot satisfy this gate.
+
 The local AMD64 test appliance now runs rc.2 on isolated HTTPS port 8443. It is
 not a production deployment and did not replace or stop the host systemd DSH.
-The rc.2 permission-default, image normalization, Files API/fallback/quota,
-provider-backed vision, rollback and resource-pressure behavior still requires
-formal regression acceptance. See
+Seven network-disabled package-level rc.2 contracts now cover permission
+configuration/reducers, image persistence/bounds, Files upload/fallback,
+single stale-ID retry, index reuse, bounded cleanup and credential isolation.
+Browser permission semantics, provider-backed vision/Files, rollback and
+resource-pressure behavior still require formal regression acceptance. See
 [the rc.2 readiness record](rc2-release-readiness.md) for the exact evidence
 and open gates.
 

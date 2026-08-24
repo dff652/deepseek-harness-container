@@ -13,8 +13,17 @@
 `SHA256SUMS` 成员均通过。两架构均通过禁网原生模块、loopback Web、只读
 rootfs、UID 10001、request-image 状态目录和无 shell/package manager 检查。
 
+两架构还通过 7 项 rc.2 禁网包级合同。新增的真实镜像 CVE 审计把版本、精确
+repository digest、平台、entrypoint、PID 1 实际 argv、ELF 导入和
+`127.0.0.1:3080/tcp` 绑定在同一份 JSON 中。AMD64 的 OpenSSL QUIC 项只对
+这个 TCP-only DSH Web 候选判为 `not-applicable-candidate`，另 3 项 glibc
+结果继续阻塞；x86/QEMU 会包装 ARM64 PID 1 argv，因此 ARM64 的 QUIC 项也
+保持 `unknown`，共 4 项阻塞。未知不是豁免，生产 ARM 仍须原生复验。
+
 Caddy 与隔离 HAProxy profile 的真实 DSH Compose 在 AMD64 和 QEMU ARM64
-均通过。隔离的本机 AMD64 长期测试项目使用 8443，与宿主 systemd DSH 的
+均通过；HAProxy renderer 现在也把 443 规范化为裸 IP，并对 8443 等非默认
+端口强制精确 `IP:port` Host/Origin。隔离的本机 AMD64 长期测试项目使用
+8443，与宿主 systemd DSH 的
 3080 并行；升级到 rc.2 后容器健康，可信 CA/IP-SAN TLS、临时随机凭据的
 401/200 与 WebUI title、错误 Origin/Host/cross-site 以及容器无 3080 发布
 均通过。测试后恢复原 bcrypt 哈希，临时明文未记录；宿主两个 3080 listener

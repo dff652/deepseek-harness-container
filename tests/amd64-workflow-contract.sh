@@ -29,6 +29,10 @@ grep -Fq 'HAPROXY_REF: haproxy:3.4.3-alpine3.24@sha256:c7f5037a567378929d0aba734
 grep -Fq 'HAPROXY_ARCHIVE_TAG: haproxy:dsh-offline-3.4.3-amd64-c7f5037a5673' "$workflow" || fail "AMD64 HAProxy offline tag is missing"
 grep -Fq 'driver-opts: image=moby/buildkit:v0.29.0@sha256:0039c1d47e8748b5afea56f4e85f14febaf34452bd99d9552d2daa82262b5cc5' "$workflow" || fail "BuildKit image is not pinned"
 grep -Fq 'tests/amd64-runtime.sh' "$workflow" || fail "AMD64 runtime smoke missing"
+grep -Fq 'tests/rc2-regression.sh' "$workflow" || fail "rc.2 package regression is not run on AMD64"
+grep -Fq 'tests/runtime-cve-reachability.sh' "$workflow" || fail "runtime CVE evidence contract is not run on AMD64"
+grep -Fq 'scripts/audit-loaded-runtime-cve.sh "$IMAGE_TAG" linux/amd64' "$workflow" || fail "live AMD64 runtime CVE evidence is not collected"
+grep -Fq 'runtime-cve-reachability.json' "$workflow" || fail "live AMD64 runtime CVE report is not bundled"
 grep -Fq 'tests/amd64-compose-contract.sh' "$workflow" || fail "AMD64 Compose contract missing"
 grep -Fq 'tests/amd64-workflow-contract.sh' "$workflow" || fail "AMD64 workflow contract is not run"
 grep -Fq 'tests/haproxy-contract.sh' "$workflow" || fail "HAProxy config contract is not run"
@@ -37,6 +41,7 @@ grep -Fq 'tests/haproxy-compose-runtime.sh' "$workflow" || fail "HAProxy Compose
 grep -Fq 'tests/offline-image-archive.sh' "$workflow" || fail "offline image archive clean-load contract is not run"
 # shellcheck disable=SC2016 # Inspect literal workflow shell variables.
 grep -Fq 'ARCHIVE_TAG="$HAPROXY_ARCHIVE_TAG" CLEAN_LOAD_REQUIRED=1' "$workflow" || fail "AMD64 workflow does not require a tagged destructive clean-load proof"
+grep -Fq 'CLEAN_LOAD_REQUIRED=1 KEEP_ARCHIVE_TAG=1' "$workflow" || fail "workflow does not explicitly retain the archive tag needed by later runtime tests"
 # shellcheck disable=SC2016 # Inspect literal workflow shell variables.
 grep -Fq 'HAPROXY_IMAGE="$HAPROXY_ARCHIVE_TAG"' "$workflow" || fail "AMD64 HAProxy runtime does not use the portable offline tag"
 grep -Fq 'DOCKER_BUILD_RECORD_UPLOAD: "false"' "$workflow" || fail "automatic PR build-record upload is not disabled"

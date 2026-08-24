@@ -10,7 +10,7 @@ readonly ROOT
 readonly PROJECT="dsh-haproxy-compose-${$}-${RANDOM}"
 readonly DSH_IMAGE=${DSH_IMAGE:?usage: DSH_IMAGE=loaded-dsh-image DSH_PLATFORM=linux/amd64 tests/haproxy-compose-runtime.sh}
 readonly DSH_PLATFORM=${DSH_PLATFORM:-linux/amd64}
-readonly HAPROXY_IMAGE=${HAPROXY_IMAGE:-haproxy:3.4.3-alpine3.24@sha256:c7f5037a567378929d0aba734eb78b73497209c72456519420ce5e68a42d60ac}
+readonly HAPROXY_IMAGE=${HAPROXY_IMAGE:-haproxy:dsh-offline-3.4.3-amd64-c7f5037a5673}
 
 fail() {
   echo "FAIL: $*" >&2
@@ -36,8 +36,21 @@ cleanup() {
 }
 trap cleanup EXIT
 mkdir -p -- "$tmp_dir/workspace"
+host_port=$(python3 - <<'PY'
+import socket
+with socket.socket() as sock:
+    sock.bind(("127.0.0.1", 0))
+    print(sock.getsockname()[1])
+PY
+)
+[[ "$host_port" =~ ^[0-9]+$ ]] || fail "could not reserve a test HTTPS port: $host_port"
+readonly host_port
+if ((host_port == 65535)); then wrong_port=$((host_port - 1)); else wrong_port=$((host_port + 1)); fi
+readonly wrong_port
+readonly approved_authority="127.0.0.1:$host_port"
 "$ROOT/scripts/haproxy-test-pki.sh" "$tmp_dir/pki" 127.0.0.1
 export DSH_LAN_IP=127.0.0.1
+export DSH_HTTPS_PORT="$host_port"
 export DSH_HAPROXY_USERNAME=dsh-admin
 # Test-only 1000 rounds keep zero-warning deterministic under QEMU.
 # shellcheck disable=SC2016 # crypt hashes must remain literal.
@@ -46,7 +59,6 @@ python3 "$ROOT/scripts/render-haproxy-config.py" --output "$tmp_dir/haproxy.cfg"
 
 export DSH_IMAGE DSH_PLATFORM HAPROXY_IMAGE DSH_WORKSPACE="$tmp_dir/workspace"
 export HAPROXY_CONFIG="$tmp_dir/haproxy.cfg" HAPROXY_CERT="$tmp_dir/pki/tls.pem"
-export DSH_HTTPS_PORT=0
 
 docker compose --project-name "$PROJECT" --file "$ROOT/compose.haproxy.yaml" up --detach --wait
 running=$(docker compose --project-name "$PROJECT" --file "$ROOT/compose.haproxy.yaml" ps --status running --services | sort)
@@ -54,12 +66,9 @@ test "$running" = $'dsh\nhaproxy' || {
   docker compose --project-name "$PROJECT" --file "$ROOT/compose.haproxy.yaml" ps
   fail "unexpected running services: $running"
 }
-host_port=$(docker compose --project-name "$PROJECT" --file "$ROOT/compose.haproxy.yaml" port dsh 443 | sed -n 's/^127\.0\.0\.1:\([0-9][0-9]*\)$/\1/p')
-[[ "$host_port" =~ ^[0-9]+$ ]] || fail "could not resolve ephemeral HTTPS port: $host_port"
-readonly host_port
 for attempt in $(seq 1 30); do
   if curl --silent --show-error --noproxy '*' --cacert "$tmp_dir/pki/ca.crt" \
-      --user dsh-admin:test-password -H 'Host: 127.0.0.1' \
+      --user dsh-admin:test-password -H "Host: $approved_authority" \
       --output /dev/null --write-out '%{http_code}' \
       "https://127.0.0.1:$host_port/" 2>/dev/null | grep -qx '200'; then
     break
@@ -71,14 +80,34 @@ for attempt in $(seq 1 30); do
   sleep 1
 done
 test "$(curl --silent --show-error --noproxy '*' --cacert "$tmp_dir/pki/ca.crt" \
-  -H 'Host: 127.0.0.1' --output /dev/null --write-out '%{http_code}' \
+  -H "Host: $approved_authority" --output /dev/null --write-out '%{http_code}' \
   "https://127.0.0.1:$host_port/")" = 401
 test "$(curl --silent --show-error --noproxy '*' --cacert "$tmp_dir/pki/ca.crt" \
-  --user dsh-admin:test-password -H 'Host: 127.0.0.1' \
+  --user dsh-admin:test-password -H "Host: $approved_authority" \
   --output /dev/null --write-out '%{http_code}' "https://127.0.0.1:$host_port/")" = 200
 test "$(curl --silent --show-error --noproxy '*' --cacert "$tmp_dir/pki/ca.crt" \
-  --user dsh-admin:test-password -H 'Host: 127.0.0.1:8443' \
+  --user dsh-admin:test-password -H "Host: 127.0.0.1:$wrong_port" \
   --output /dev/null --write-out '%{http_code}' "https://127.0.0.1:$host_port/")" = 421
 test "$(docker compose --project-name "$PROJECT" --file "$ROOT/compose.haproxy.yaml" port dsh 443)" = "127.0.0.1:$host_port"
 test -z "$(docker compose --project-name "$PROJECT" --file "$ROOT/compose.haproxy.yaml" port dsh 3080 2>/dev/null)"
+test -z "$(docker compose --project-name "$PROJECT" --file "$ROOT/compose.haproxy.yaml" port dsh 443/udp 2>/dev/null || true)"
+
+proxy_container=$(docker compose --project-name "$PROJECT" --file "$ROOT/compose.haproxy.yaml" ps -q haproxy)
+test -n "$proxy_container"
+test "$(docker inspect "$proxy_container" --format '{{.State.Health.Status}}')" = healthy
+docker compose --project-name "$PROJECT" --file "$ROOT/compose.haproxy.yaml" restart haproxy >/dev/null
+for attempt in $(seq 1 30); do
+  health=$(docker inspect "$proxy_container" --format '{{.State.Health.Status}}')
+  if [[ "$health" == healthy ]]; then
+    break
+  fi
+  if [[ "$attempt" -eq 30 ]]; then
+    docker compose --project-name "$PROJECT" --file "$ROOT/compose.haproxy.yaml" logs haproxy >&2
+    fail "HAProxy did not recover from restart: $health"
+  fi
+  sleep 1
+done
+test "$(curl --silent --show-error --noproxy '*' --cacert "$tmp_dir/pki/ca.crt" \
+  --user dsh-admin:test-password -H "Host: $approved_authority" \
+  --output /dev/null --write-out '%{http_code}' "https://127.0.0.1:$host_port/")" = 200
 printf 'PASS: isolated Compose HAProxy + DSH startup and LAN 401/200/wrong-port-421/no-3080 smoke (%s)\n' "$DSH_PLATFORM"

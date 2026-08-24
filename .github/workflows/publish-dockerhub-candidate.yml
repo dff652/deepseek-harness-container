@@ -43,6 +43,7 @@ jobs:
           bash tests/negative-exposure.sh
           bash tests/dockerhub-workflow-contract.sh
           bash tests/rc2-lock-contract.sh
+          bash tests/runtime-cve-reachability.sh
           python3 -m unittest tests/supply-chain-policy.py
 
       - name: Scan complete Git history for secrets
@@ -122,6 +123,7 @@ jobs:
             --load \
             .
           bash '${{ matrix.runtime_test }}' "$LOCAL_TAG"
+          DSH_IMAGE="$LOCAL_TAG" bash tests/rc2-regression.sh
           docker image inspect "$LOCAL_TAG" > evidence/dsh-image-inspect.json
 
       - name: Resolve exact Caddy child image
@@ -166,6 +168,11 @@ jobs:
           "$GRYPE_CMD" sbom:evidence/caddy-sbom.syft.json \
             -o json --file evidence/caddy-vulnerabilities.json
           "$GRYPE_CMD" version > evidence/grype-version.txt
+
+      - name: Enforce live runtime CVE reachability
+        run: |
+          scripts/audit-loaded-runtime-cve.sh "$LOCAL_TAG" '${{ matrix.platform }}' \
+            evidence/runtime-cve-reachability.json gate
 
       - name: Enforce source, license and vulnerability policies
         run: |

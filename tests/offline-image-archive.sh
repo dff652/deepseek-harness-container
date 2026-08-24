@@ -7,6 +7,7 @@ readonly SOURCE_IMAGE=${SOURCE_IMAGE:-haproxy:3.4.3-alpine3.24@sha256:c7f5037a56
 readonly SOURCE_DIGEST=${SOURCE_IMAGE##*@}
 readonly SOURCE_PLATFORM=${SOURCE_PLATFORM:-linux/amd64}
 readonly CLEAN_LOAD_REQUIRED=${CLEAN_LOAD_REQUIRED:-0}
+readonly KEEP_ARCHIVE_TAG=${KEEP_ARCHIVE_TAG:-0}
 source_name=${SOURCE_IMAGE%@*}
 source_leaf=${source_name##*/}
 [[ "$source_leaf" == *:* ]] || {
@@ -17,6 +18,10 @@ readonly SOURCE_REPOSITORY=${source_name%:*}
 readonly TEST_ARCHIVE_TAG=${ARCHIVE_TAG:-$SOURCE_REPOSITORY:dsh-offline-contract-${SOURCE_PLATFORM##*/}-${SOURCE_DIGEST#sha256:}}
 readonly CONFLICT_TAG="$SOURCE_REPOSITORY:dsh-offline-conflict-${$}-${RANDOM}"
 readonly PRIOR_TAG="local/dsh-offline-prior-${$}-${RANDOM}:test"
+readonly CLEAN_REPOSITORY="local/dsh-offline-clean-${$}-${RANDOM}"
+readonly CLEAN_SOURCE_TAG="$CLEAN_REPOSITORY:source"
+readonly CLEAN_SOURCE_REF="$CLEAN_SOURCE_TAG@$SOURCE_DIGEST"
+readonly CLEAN_ARCHIVE_TAG="$CLEAN_REPOSITORY:archive"
 
 fail() {
   echo "FAIL: $*" >&2
@@ -25,23 +30,40 @@ fail() {
 
 command -v docker >/dev/null || fail 'docker is required'
 case "$CLEAN_LOAD_REQUIRED" in 0|1) ;; *) fail 'CLEAN_LOAD_REQUIRED must be 0 or 1' ;; esac
+case "$KEEP_ARCHIVE_TAG" in 0|1) ;; *) fail 'KEEP_ARCHIVE_TAG must be 0 or 1' ;; esac
 docker image inspect "$SOURCE_IMAGE" >/dev/null 2>&1 || fail "source image is not loaded: $SOURCE_IMAGE"
 test "$(docker image inspect "$SOURCE_IMAGE" --format '{{.Os}}/{{.Architecture}}')" = \
   "$SOURCE_PLATFORM" || fail 'source image platform does not match SOURCE_PLATFORM'
 SOURCE_IMAGE_ID=$(docker image inspect "$SOURCE_IMAGE" --format '{{.Id}}')
 readonly SOURCE_IMAGE_ID
+archive_tag_preexisting=0
+if docker image inspect "$TEST_ARCHIVE_TAG" >/dev/null 2>&1; then
+  test "$(docker image inspect "$TEST_ARCHIVE_TAG" --format '{{.Id}}')" = "$SOURCE_IMAGE_ID" ||
+    fail 'pre-existing archive tag points to a different image'
+  archive_tag_preexisting=1
+fi
+for fresh_tag in "$CONFLICT_TAG" "$PRIOR_TAG" "$CLEAN_SOURCE_TAG" "$CLEAN_ARCHIVE_TAG"; do
+  docker image inspect "$fresh_tag" >/dev/null 2>&1 &&
+    fail "refusing to reuse pre-existing test tag: $fresh_tag"
+done
 
 tmp_dir=$(mktemp -d /tmp/dsh-offline-archive.XXXXXX)
 prior_id=''
 archive=''
-source_removed=0
 cleanup() {
   local status=$?
   trap - EXIT
-  if [[ $source_removed == 1 ]] && ! docker image inspect "$SOURCE_IMAGE" >/dev/null 2>&1; then
-    if [[ -n "$archive" && -f "$archive" && ! -L "$archive" ]]; then
-      docker load --input "$archive" >/dev/null || status=2
+  for cleanup_tag in "$CLEAN_SOURCE_TAG" "$CLEAN_ARCHIVE_TAG"; do
+    if docker image inspect "$cleanup_tag" >/dev/null 2>&1; then
+      docker image rm "$cleanup_tag" >/dev/null || status=2
+    fi
+  done
+  if [[ "$KEEP_ARCHIVE_TAG" == 0 && "$archive_tag_preexisting" == 0 ]] &&
+      docker image inspect "$TEST_ARCHIVE_TAG" >/dev/null 2>&1; then
+    if [[ "$(docker image inspect "$TEST_ARCHIVE_TAG" --format '{{.Id}}')" == "$SOURCE_IMAGE_ID" ]]; then
+      docker image rm "$TEST_ARCHIVE_TAG" >/dev/null || status=2
     else
+      echo "FAIL: refusing to remove changed archive tag $TEST_ARCHIVE_TAG" >&2
       status=2
     fi
   fi
@@ -142,19 +164,25 @@ else
     fail 'classic-store archive config does not match source image ID'
 fi
 
-# A fresh GitHub runner may destructively simulate a clean repository namespace.
-# Local runs keep the user's source association intact unless explicitly opted in.
+# Simulate a fresh repository namespace without deleting the caller's source
+# association. The archive deliberately carries a different tag in the same
+# temporary repository; after both preparation tags are removed, only loading
+# the archive may make the digest-qualified source reference resolvable.
 if [[ "$CLEAN_LOAD_REQUIRED" == 1 ]]; then
-  source_removed=1
-  docker image rm "$SOURCE_IMAGE" >/dev/null
-  docker image rm "$TEST_ARCHIVE_TAG" >/dev/null
-  if docker image inspect "$TEST_ARCHIVE_TAG" >/dev/null 2>&1; then
-    fail 'archive tag unexpectedly remained before clean load'
+  clean_archive="$tmp_dir/clean-image.tar"
+  docker image tag "$SOURCE_IMAGE" "$CLEAN_SOURCE_TAG"
+  docker image inspect "$CLEAN_SOURCE_REF" >/dev/null 2>&1 ||
+    fail 'temporary digest-qualified source reference is not resolvable'
+  "$ROOT/scripts/save-pinned-image.sh" "$CLEAN_SOURCE_REF" "$SOURCE_PLATFORM" \
+    "$CLEAN_ARCHIVE_TAG" "$clean_archive"
+  docker image rm "$CLEAN_SOURCE_TAG" >/dev/null
+  docker image rm "$CLEAN_ARCHIVE_TAG" >/dev/null 2>&1 || true
+  if docker image inspect "$CLEAN_SOURCE_REF" >/dev/null 2>&1; then
+    fail 'temporary repository unexpectedly remained before clean load'
   fi
-  docker load --input "$archive" >/dev/null
-  test "$(docker image inspect "$TEST_ARCHIVE_TAG" --format '{{.Id}} {{.Os}}/{{.Architecture}}')" = \
+  docker load --input "$clean_archive" >/dev/null
+  test "$(docker image inspect "$CLEAN_SOURCE_REF" --format '{{.Id}} {{.Os}}/{{.Architecture}}')" = \
     "$SOURCE_IMAGE_ID $SOURCE_PLATFORM"
-  source_removed=0
 fi
 
 grep -Fq "scripts/save-pinned-image.sh\" \"\$CADDY_REF\" linux/amd64" \

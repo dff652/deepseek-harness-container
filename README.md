@@ -28,10 +28,23 @@ pinned Caddy image has 35 matches on each scanned architecture. The Docker Hub w
 therefore remains fail-closed; this is not yet a publishable image or
 production-ARM acceptance.
 
+The repository now also audits each loaded rc.2 image by exact repository
+digest and platform. It binds the version label, image entrypoint, actual PID 1
+argv, complete ELF imports and the sole `127.0.0.1:3080/tcp` listener. On native
+AMD64, `CVE-2026-14456` is a non-applicability candidate because the exact DSH
+Web runtime has no UDP/QUIC path; three glibc advisories remain blocking. Under
+x86/QEMU ARM64, the emulator changes PID 1 argv, so that OpenSSL result remains
+`unknown` and all four advisories block. This conservative difference is
+intentional. Candidate workflows retain the live JSON; the Docker Hub workflow
+uses it as a fail-closed publication gate. The exception list remains empty.
+The cited GitHub rc.2 runs predate this unpushed workflow change, so a new
+native CI execution is still pending; the current live reports are local.
+
 An isolated HAProxy `3.4.3-alpine3.24` alternative now passes the same local
 gateway contract on native AMD64 and QEMU ARM64, including real DSH Compose
 startup, trusted IP-SAN TLS/no-SNI, 401/200/421/403, upstream header removal,
-WebSocket, SSE and no published 3080. Both exact HAProxy children scan at two
+WebSocket, SSE, an exact IP or IP:non-default-port authority, restart recovery
+and no published 3080/UDP. Both exact HAProxy children scan at two
 High records (one advisory) each, making the comparable DSH+HAProxy appliance
 six records per architecture. That is an improvement, not a release approval:
 native production ARM, formal retained supply-chain evidence and the empty-
@@ -47,7 +60,11 @@ The current rc.2 AMD64 candidate records manifest `sha256:3cea6dff…` and confi
 `sha256:0c1fe2ec…` and config `sha256:c3511761…`. Both load Koffi, node-pty,
 Landlock and Sharp with networking disabled and pass the loopback Web,
 read-only-root and UID 10001 checks. Caddy and HAProxy Compose acceptance passed
-on native AMD64 and QEMU ARM64. The persistent local AMD64 test appliance was
+on native AMD64 and QEMU ARM64. Seven package-level rc.2 contracts additionally
+cover permission configuration/reducers, request-image persistence and bounds,
+Files upload/fallback, one stale-ID retry, cross-store upload-index reuse,
+bounded cleanup and credential isolation; they do not replace browser/provider
+acceptance. The persistent local AMD64 test appliance was
 upgraded in place to rc.2 and passed trusted-CA WebUI, 401/200/421/403 and
 no-container-3080 checks on port 8443 without changing the host systemd DSH.
 GitHub [native AMD64 run 32699950087](https://github.com/dff652/deepseek-harness-container/actions/runs/32699950087)
@@ -256,6 +273,9 @@ policy/
   supply-chain-tools.json
   vulnerability-allowlist.json
 scripts/
+  audit-loaded-runtime-cve.sh
+  audit-runtime-cve-reachability.sh
+  runtime_cve_reachability.py
   prepare-local-builder.sh
   build-candidate.sh
   build-amd64-candidate.sh
@@ -277,6 +297,9 @@ tests/
   haproxy-runtime.sh
   haproxy-compose-runtime.sh
   offline-image-archive.sh
+  rc2-regression.sh
+  rc2-regression.mjs
+  runtime-cve-reachability.sh
   supply-chain-policy.py
 assets/readme/
   hero.svg

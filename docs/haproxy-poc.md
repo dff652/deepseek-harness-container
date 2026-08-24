@@ -5,7 +5,8 @@
 This is an isolated, non-publishing alternative to the default Caddy profile.
 It does not modify `compose.yaml`, does not publish DSH port 3080 and does not
 authorize a production switch. Local native AMD64 and QEMU ARM64 functional
-tests passed on 2026-08-22. A disconnected production ARM host, real browser,
+tests were revalidated on 2026-08-24, including non-default host HTTPS ports
+for coexistence with the host installation. A disconnected production ARM host, real browser,
 model/MCP calls, cold boot and vulnerability policy acceptance are still
 required before adoption.
 
@@ -49,7 +50,9 @@ mode-0600 configuration and PEM into a named volume as UID/GID 99 with mode
 HAProxy process is UID/GID 99, has a read-only root filesystem and receives
 only `NET_BIND_SERVICE`; DSH remains UID/GID 10001 with no host-published 3080.
 
-The rendered configuration performs, in order:
+The renderer derives one exact browser authority from `DSH_LAN_IP` and
+`DSH_HTTPS_PORT`: bare IP for 443, or IP:port for a non-default port such as
+8443. The rendered configuration performs, in order:
 
 1. exact literal-IP Host validation, returning 421 for anything else;
 2. cross-site Fetch Metadata and supplied-Origin validation, returning 403;
@@ -110,6 +113,7 @@ hash_salt="$(openssl rand -hex 8)"
 export DSH_HAPROXY_PASSWORD_HASH="$(openssl passwd -5 -salt "rounds=1000\$$hash_salt")"
 unset hash_salt
 export DSH_LAN_IP=192.0.2.10
+export DSH_HTTPS_PORT=8443 # use 443 when this is the only HTTPS appliance
 python3 scripts/render-haproxy-config.py --output /approved/path/haproxy.cfg
 chmod 600 /approved/path/haproxy.cfg /approved/path/tls.pem
 ```
@@ -200,10 +204,10 @@ DSH_IMAGE=local/dsh:0.1.1-rc.2-amd64 DSH_PLATFORM=linux/amd64 \
 For QEMU ARM64, set the exact ARM64 HAProxy child, `DSH_PLATFORM=linux/arm64`
 and the loaded ARM64 DSH image for both `DSH_IMAGE` and `BACKEND_IMAGE`; set
 `HAPROXY_PLATFORM` and `BACKEND_PLATFORM` to `linux/arm64` for the direct
-runtime test. These tests cover configuration rejection,
-non-root startup, trusted IP-SAN TLS with and without SNI, 401/200/421/403,
-upstream header removal, WebSocket, SSE and no published 3080. QEMU evidence is
-not native production acceptance.
+runtime test. These tests cover configuration rejection, exact default and
+non-default authorities, non-root startup, trusted IP-SAN TLS with and without
+SNI, 401/200/421/403, upstream header removal, WebSocket, SSE, restart recovery
+and no published 3080/UDP. QEMU evidence is not native production acceptance.
 
 ## Supply-chain and adoption hold
 

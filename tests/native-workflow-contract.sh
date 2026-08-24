@@ -21,12 +21,17 @@ grep -Fq 'ARCHIVE_TAG="$CADDY_ARCHIVE_TAG" CLEAN_LOAD_REQUIRED=1' "$workflow" ||
 grep -Fq "scripts/save-pinned-image.sh \"\$CADDY_REF\" linux/arm64" "$workflow" || fail "native Caddy archive can lose its resolvable RepoTag"
 grep -Fq 'HAPROXY_REF: haproxy:3.4.3-alpine3.24@sha256:0fe6e31a91ad42440ceba4419694189673f9773f90b985bd883db0054a7c5259' "$workflow" || fail "native HAProxy child is not pinned"
 grep -Fq 'HAPROXY_ARCHIVE_TAG: haproxy:dsh-offline-3.4.3-arm64-0fe6e31a91ad' "$workflow" || fail "native HAProxy offline tag is missing"
+grep -Fq 'tests/rc2-regression.sh' "$workflow" || fail "rc.2 package regression is not run on native ARM64"
+grep -Fq 'tests/runtime-cve-reachability.sh' "$workflow" || fail "runtime CVE evidence contract is not run on native ARM64"
+grep -Fq 'scripts/audit-loaded-runtime-cve.sh "$IMAGE_TAG" linux/arm64' "$workflow" || fail "live native ARM64 runtime CVE evidence is not collected"
+grep -Fq 'runtime-cve-reachability.json' "$workflow" || fail "live native ARM64 runtime CVE report is not bundled"
 grep -Fq 'tests/haproxy-contract.sh' "$workflow" || fail "native HAProxy config contract is not run"
 grep -Fq 'tests/haproxy-runtime.sh' "$workflow" || fail "native HAProxy direct runtime contract is not run"
 grep -Fq 'tests/haproxy-compose-runtime.sh' "$workflow" || fail "native HAProxy Compose runtime contract is not run"
 grep -Fq 'tests/offline-image-archive.sh' "$workflow" || fail "native offline image archive clean-load contract is not run"
 # shellcheck disable=SC2016 # Inspect literal workflow shell variables.
 grep -Fq 'ARCHIVE_TAG="$HAPROXY_ARCHIVE_TAG" CLEAN_LOAD_REQUIRED=1' "$workflow" || fail "native workflow does not require a tagged destructive clean-load proof"
+grep -Fq 'CLEAN_LOAD_REQUIRED=1 KEEP_ARCHIVE_TAG=1' "$workflow" || fail "native workflow does not explicitly retain the archive tag needed by later runtime tests"
 # shellcheck disable=SC2016 # Inspect literal workflow shell variables.
 grep -Fq 'HAPROXY_IMAGE="$HAPROXY_ARCHIVE_TAG"' "$workflow" || fail "native HAProxy runtime does not use the portable offline tag"
 grep -Fq 'del(.images.binfmt, .images.arm64Probe)' "$workflow" || fail "QEMU-only tool identities remain in the native lock"

@@ -54,6 +54,14 @@ ARM64 runtime/Compose contracts, including trusted IP-SAN TLS, Basic Auth,
 401/200/421/403, WebSocket, SSE, header filtering and no published container
 port 3080. QEMU results do not replace native ARM or production-host evidence.
 
+The exact AMD64 and ARM64 images also passed seven network-disabled package
+contracts against the rc.2 pnpm entries: permission configuration/reducer
+primitives, request-image persistence/path/cache/bounds, Files upload and
+credential scoping, missing-`/files` inline fallback, one stale-ID retry,
+upload-index reuse after store recreation, and bounded oldest-`dsh-*` cleanup.
+These are package/runtime contracts, not claims about the complete browser UI
+or a real provider.
+
 An isolated local AMD64 appliance was upgraded from rc.1 to rc.2 on HTTPS port
 8443. It is a test deployment only. Its DSH container is healthy, non-root and
 read-only; the container publishes no 3080 port, and the separately managed
@@ -93,6 +101,20 @@ The committed vulnerability exception list remains empty. Findings may be
 remediated by an accepted upstream/base update or reviewed one by one with an
 exact package/version/architecture scope, accountable owner, tracking record,
 reason and expiry. Count reduction is not an exception or publication approval.
+
+An additional live audit now binds each loaded image to its same-repository
+digest, platform, rc.2 version, entrypoint, actual PID 1 argv, complete ELF
+imports and the expected loopback TCP listener. Native AMD64 classifies
+`CVE-2026-14456` as `not-applicable-candidate` for this exact TCP-only DSH Web
+runtime; `CVE-2026-5435` remains `unknown`, while `CVE-2026-5450` and
+`CVE-2026-5928` have direct imported-symbol evidence. On the x86/QEMU ARM64
+run, QEMU wraps PID 1 argv, so the strict runtime contract leaves
+`CVE-2026-14456` `unknown`; the three glibc results are otherwise the same.
+Unknown and evidence states fail closed. Non-publishing workflows retain the
+JSON report; the publication workflow requires a zero-blocker live result.
+The recorded GitHub run IDs above predate this workflow change. New native
+workflow evidence remains pending after an explicitly authorized push; the
+current reachability reports are local AMD64 and x86/QEMU ARM64 evidence.
 
 ## Non-mechanical rc.2 behavior requiring acceptance
 

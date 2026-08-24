@@ -191,9 +191,10 @@ with exact AMD64 child `sha256:c7f5037a…` and ARM64 child
 default Caddy service unchanged.
 
 Native AMD64 and QEMU ARM64 tests passed non-root/read-only startup, exact
-Host and Origin policy, cross-site rejection, trusted IP-SAN TLS with and
-without SNI, Basic Auth 401/200, upstream-header removal, WebSocket, SSE and
-no published 3080. Full Compose tests using the exact DSH AMD64 and ARM64
+Host and Origin policy for both IP:443 and IP:non-default-port authorities,
+cross-site rejection, trusted IP-SAN TLS with and without SNI, Basic Auth
+401/200, upstream-header removal, WebSocket, SSE, restart recovery and no
+published 3080/UDP. Full Compose tests using the exact DSH AMD64 and ARM64
 images also passed. See [the offline PoC runbook](haproxy-poc.md) for exact
 digests, commands and evidence boundaries.
 
@@ -210,6 +211,11 @@ records, the comparison is six records per architecture: lower than the
 official Caddy and Distroless-Caddy snapshots, but not zero. The official
 HAProxy Alpine image also retains a shell/package manager and is not
 Distroless.
+
+The HAProxy binary is compiled with QUIC support, but this isolated profile
+configures only TCP TLS and publishes no UDP port. That lowers reachability for
+`CVE-2026-14456`; it does not approve the two package findings or replace the
+required owner/tracking/expiry review. No exception was added.
 
 Adoption requires an improvement in the whole appliance, not merely a lower
 scanner count: exact behavioral parity, simpler or acceptable offline PKI,

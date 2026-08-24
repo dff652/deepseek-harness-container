@@ -1,4 +1,4 @@
-# HAProxy 3.4 appliance PoC template.
+# HAProxy 3.4 alternative-gateway candidate template.
 #
 # This file is intentionally a template.  Render it with
 # scripts/render-haproxy-config.py using deployment-owned values.  The
@@ -6,6 +6,12 @@
 #
 # The generated file is consumed by the official HAProxy image.  The
 # certificate PEM is mounted separately at /run/haproxy/tls.pem.
+#
+# QUIC contract: the upstream binary may be built with OpenSSL QUIC support,
+# but this profile deliberately configures no QUIC listener.  The Compose
+# profile publishes TCP 443 only and has no UDP 443 mapping.  This reachability
+# boundary is evidence for the candidate contract, not a vulnerability
+# exception or a production-adoption decision.
 
 global
 	# Keep the master process in the foreground; the image entrypoint also
@@ -33,13 +39,11 @@ frontend dsh_https
 	# One PEM file contains the deployment-owned IP-SAN certificate and key.
 	# With one certificate and no strict-sni, it is also HAProxy's default for
 	# clients that omit SNI (for example curl https://<literal-ip>/).
-	bind :443 ssl crt /run/haproxy/tls.pem alpn h2,http/1.1
+	bind :443 ssl crt /run/haproxy/tls.pem ssl-min-ver TLSv1.2 alpn h2,http/1.1
 
-	# Permit exactly the normal HTTPS Host forms: the literal IPv4 address or
-	# that address with the default :443 port. Do not normalize arbitrary ports
-	# away; repeated ACL definitions with one name are an OR in HAProxy.
+	# Permit exactly the rendered browser authority: bare IPv4 for host port
+	# 443, or IPv4:port for a non-default host port. Do not normalize ports away.
 	acl approved_host hdr(host) -m str __DSH_HOST_AUTHORITY__
-	acl approved_host hdr(host) -m str __DSH_HOST_AUTHORITY__:443
 	acl cross_site hdr(Sec-Fetch-Site) -i cross-site
 	acl has_origin hdr(Origin) -m found
 	acl approved_origin hdr(Origin) -m str https://__DSH_HOST_AUTHORITY__

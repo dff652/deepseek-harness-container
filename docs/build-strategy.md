@@ -148,6 +148,17 @@ acceptance still must run before release. See the
 [rc.2 readiness record](rc2-release-readiness.md) for exact evidence and open
 feature/supply-chain gates.
 
+The build workflows now run seven exact-rc.2 package contracts and a live
+runtime CVE collector against the image they just loaded. The collector binds
+the same-repository digest, platform, version, entrypoint, actual PID 1 argv,
+ELF imports and expected loopback listener. Non-publishing builds retain
+blocked reports as evidence but reject collection failures; the Docker Hub
+workflow runs the same collector in fail-closed `gate` mode. The x86/QEMU
+ARM64 report conservatively leaves the OpenSSL QUIC item `unknown` because the
+emulator wraps PID 1 argv; this is not native ARM equivalence.
+The existing rc.2 GitHub run IDs predate this unpushed workflow update, so they
+must not be cited as live-collector evidence until a new authorized run passes.
+
 ## GitHub native AMD64
 
 `.github/workflows/build-amd64.yml` is the non-publishing native counterpart to

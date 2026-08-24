@@ -7,7 +7,7 @@ set -Eeuo pipefail
 
 ROOT=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
 readonly ROOT
-readonly HAPROXY_IMAGE=${HAPROXY_IMAGE:-haproxy:3.4.3-alpine3.24@sha256:c7f5037a567378929d0aba734eb78b73497209c72456519420ce5e68a42d60ac}
+readonly HAPROXY_IMAGE=${HAPROXY_IMAGE:-haproxy:dsh-offline-3.4.3-amd64-c7f5037a5673}
 readonly HAPROXY_PLATFORM=${HAPROXY_PLATFORM:-linux/amd64}
 readonly BACKEND_IMAGE=${BACKEND_IMAGE:-local/dsh:0.1.1-rc.2-amd64}
 readonly BACKEND_PLATFORM=${BACKEND_PLATFORM:-linux/amd64}
@@ -53,8 +53,22 @@ cleanup() {
 }
 trap cleanup EXIT
 
+host_port=$(python3 - <<'PY'
+import socket
+with socket.socket() as sock:
+    sock.bind(("127.0.0.1", 0))
+    print(sock.getsockname()[1])
+PY
+)
+[[ "$host_port" =~ ^[0-9]+$ ]] || fail "could not reserve a test HTTPS port: $host_port"
+readonly host_port
+if ((host_port == 65535)); then wrong_port=$((host_port - 1)); else wrong_port=$((host_port + 1)); fi
+readonly wrong_port
+readonly approved_authority="127.0.0.1:$host_port"
+
 "$ROOT/scripts/haproxy-test-pki.sh" "$tmp_dir/pki" 127.0.0.1
 export DSH_LAN_IP=127.0.0.1
+export DSH_HTTPS_PORT="$host_port"
 export DSH_HAPROXY_USERNAME=dsh-admin
 # Test-only 1000 rounds keep zero-warning deterministic under QEMU.
 # shellcheck disable=SC2016 # crypt hashes must remain literal.
@@ -90,14 +104,11 @@ docker run --detach \
   --platform "$BACKEND_PLATFORM" \
   --name "$BACKEND_NAME" \
   --label "$TEST_LABEL" \
-  --publish 127.0.0.1::443 \
+  --publish "127.0.0.1:$host_port:443" \
   --mount "type=bind,src=$ROOT/haproxy/test-backend.mjs,dst=/tmp/test-backend.mjs,ro" \
   --entrypoint /nodejs/bin/node \
   "$BACKEND_IMAGE" /tmp/test-backend.mjs >/dev/null
 
-host_port=$(docker port "$BACKEND_NAME" 443/tcp | sed -n 's/^127\.0\.0\.1:\([0-9][0-9]*\)$/\1/p')
-[[ "$host_port" =~ ^[0-9]+$ ]] || fail "could not resolve ephemeral HTTPS port: $host_port"
-readonly host_port
 readonly base_url="https://127.0.0.1:$host_port"
 
 docker run --detach \
@@ -112,13 +123,27 @@ docker run --detach \
   --cap-add NET_BIND_SERVICE \
   --security-opt no-new-privileges:true \
   --tmpfs /tmp:rw,noexec,nosuid,nodev,size=8m \
+  --health-cmd 'haproxy -c -f /run/haproxy/haproxy.cfg' \
+  --health-interval 10s --health-timeout 5s --health-start-period 5s --health-retries 6 \
   --mount "type=volume,src=$STAGING_VOLUME,dst=/run/haproxy,ro" \
   --entrypoint haproxy \
   "$HAPROXY_IMAGE" -W -db -f /run/haproxy/haproxy.cfg >/dev/null
 
 for attempt in $(seq 1 30); do
+  health=$(docker inspect "$PROXY_NAME" --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}starting{{end}}')
+  if [[ "$health" == healthy ]]; then
+    break
+  fi
+  if [[ "$attempt" -eq 30 ]]; then
+    docker logs "$PROXY_NAME" >&2
+    fail "HAProxy healthcheck did not become healthy: $health"
+  fi
+  sleep 1
+done
+
+for attempt in $(seq 1 30); do
   if curl --silent --show-error --noproxy '*' --cacert "$tmp_dir/pki/ca.crt" \
-      --user dsh-admin:test-password -H 'Host: 127.0.0.1' \
+      --user dsh-admin:test-password -H "Host: $approved_authority" \
       --output /dev/null --write-out '%{http_code}' \
       "$base_url/" 2>/dev/null | grep -qx '200'; then
     break
@@ -139,15 +164,16 @@ request_with_host() {
 }
 
 request() {
-  request_with_host '127.0.0.1' "$@"
+  request_with_host "$approved_authority" "$@"
 }
 
 test "$(curl --silent --show-error --noproxy '*' --cacert "$tmp_dir/pki/ca.crt" \
-  -H 'Host: 127.0.0.1' --output /dev/null --write-out '%{http_code}' "$base_url/")" = 401
+  -H "Host: $approved_authority" --output /dev/null --write-out '%{http_code}' "$base_url/")" = 401
 test "$(request_with_host 'evil.example' --output /dev/null --write-out '%{http_code}' "$base_url/")" = 421
-test "$(request_with_host '127.0.0.1:8443' --output /dev/null --write-out '%{http_code}' "$base_url/")" = 421
+test "$(request_with_host "127.0.0.1:$wrong_port" --output /dev/null --write-out '%{http_code}' "$base_url/")" = 421
 test "$(request -H 'Sec-Fetch-Site: cross-site' --output /dev/null --write-out '%{http_code}' "$base_url/")" = 403
 test "$(request -H 'Origin: https://evil.example' --output /dev/null --write-out '%{http_code}' "$base_url/")" = 403
+test "$(request -H "Origin: https://127.0.0.1:$wrong_port" --output /dev/null --write-out '%{http_code}' "$base_url/")" = 403
 
 body=$(request "$base_url/")
 python3 - "$body" <<'PY'
@@ -157,7 +183,7 @@ value = json.loads(sys.argv[1])
 assert value == {"host": "127.0.0.1:3080", "origin": None, "sec_fetch_site": None}, value
 PY
 
-body=$(request -H 'Origin: https://127.0.0.1' -H 'Sec-Fetch-Site: same-origin' "$base_url/")
+body=$(request -H "Origin: https://$approved_authority" -H 'Sec-Fetch-Site: same-origin' "$base_url/")
 python3 - "$body" <<'PY'
 import json
 import sys
@@ -165,16 +191,14 @@ value = json.loads(sys.argv[1])
 assert value == {"host": "127.0.0.1:3080", "origin": None, "sec_fetch_site": None}, value
 PY
 
-test "$(request_with_host '127.0.0.1:443' --output /dev/null --write-out '%{http_code}' "$base_url/")" = 200
-
 stream=$(curl --silent --show-error --noproxy '*' --cacert "$tmp_dir/pki/ca.crt" \
-  --user dsh-admin:test-password -H 'Host: 127.0.0.1' \
+  --user dsh-admin:test-password -H "Host: $approved_authority" \
   -N --max-time 5 "$base_url/stream" 2>/dev/null || true)
 grep -Fq 'data: first' <<<"$stream" || fail 'SSE first event did not pass through'
 grep -Fq 'data: second' <<<"$stream" || fail 'SSE second event did not pass through'
 
 websocket=$(curl --silent --show-error --noproxy '*' --cacert "$tmp_dir/pki/ca.crt" \
-  --user dsh-admin:test-password -H 'Host: 127.0.0.1' \
+  --user dsh-admin:test-password -H "Host: $approved_authority" \
   --http1.1 --include --no-buffer \
   -H 'Connection: Upgrade' -H 'Upgrade: websocket' \
   -H 'Sec-WebSocket-Version: 13' \
@@ -182,12 +206,28 @@ websocket=$(curl --silent --show-error --noproxy '*' --cacert "$tmp_dir/pki/ca.c
   --max-time 5 2>/dev/null || true)
 grep -Fq '101 Switching Protocols' <<<"$websocket" || fail 'WebSocket upgrade did not pass through'
 
-nosni=$(printf 'GET / HTTP/1.1\r\nHost: 127.0.0.1\r\nAuthorization: Basic ZHNoLWFkbWluOnRlc3QtcGFzc3dvcmQ=\r\nConnection: close\r\n\r\n' |
+nosni=$(printf 'GET / HTTP/1.1\r\nHost: %s\r\nAuthorization: Basic ZHNoLWFkbWluOnRlc3QtcGFzc3dvcmQ=\r\nConnection: close\r\n\r\n' "$approved_authority" |
   timeout 5 openssl s_client -quiet -noservername -connect "127.0.0.1:$host_port" \
     -CAfile "$tmp_dir/pki/ca.crt" 2>/dev/null || true)
 grep -Fq 'HTTP/1.1 200' <<<"$nosni" || fail 'no-SNI request did not receive authorized 200'
 
 ports=$(docker port "$BACKEND_NAME")
 test "$ports" = "443/tcp -> 127.0.0.1:$host_port" || fail "unexpected published ports: $ports"
+test -z "$(docker port "$BACKEND_NAME" 443/udp 2>/dev/null || true)" ||
+  fail 'unexpected UDP 443 exposure'
+
+docker restart "$PROXY_NAME" >/dev/null
+for attempt in $(seq 1 30); do
+  health=$(docker inspect "$PROXY_NAME" --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}starting{{end}}')
+  if [[ "$health" == healthy ]]; then
+    break
+  fi
+  if [[ "$attempt" -eq 30 ]]; then
+    docker logs "$PROXY_NAME" >&2
+    fail "HAProxy did not recover from restart: $health"
+  fi
+  sleep 1
+done
+test "$(request --output /dev/null --write-out '%{http_code}' "$base_url/")" = 200
 test "$(docker inspect "$PROXY_NAME" --format '{{.Config.User}}')" = '99:99'
-printf 'PASS: HAProxy 401/200/421/403 including wrong-port Host, upstream header gate, SSE, WebSocket, no-SNI and no-3080 runtime contract\n'
+printf 'PASS: HAProxy 401/200/421/403 including exact Host/Origin, upstream gate, SSE, WebSocket, no-SNI, TCP-only 443, restart recovery and no-3080 runtime contract\n'

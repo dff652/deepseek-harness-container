@@ -107,6 +107,16 @@ services:
       - /tmp:rw,noexec,nosuid,nodev,size=64m
     volumes:
       - haproxy-runtime:/run/haproxy:ro
+    healthcheck:
+      # A live process is supervised by the container runtime; this check
+      # additionally proves that the staged config and IP-SAN PEM remain
+      # readable after a restart. It deliberately does not open a second
+      # listener or require a credential in the container environment.
+      test: ["CMD", "haproxy", "-c", "-f", "/run/haproxy/haproxy.cfg"]
+      interval: 10s
+      timeout: 5s
+      start_period: 5s
+      retries: 6
     # The official entrypoint adds `haproxy -W -db` when the command starts
     # with an option. Keep the effective argv single and auditable.
     command: ["-f", "/run/haproxy/haproxy.cfg"]
@@ -114,4 +124,14 @@ services:
 
 volumes:
   dsh-home:
+    # Persistent DSH application state only. The approved workspace remains a
+    # separate deployment-owned bind mount; gateway credentials/configuration
+    # are never stored here.
+    labels:
+      io.deepseek-harness-container.volume-scope: persistent-dsh-home
   haproxy-runtime:
+    # Restart-scoped staged config/key material. It is shared only between
+    # haproxy-init and haproxy, is never mounted into DSH, and is removed with
+    # the isolated project (`down --volumes`) during teardown.
+    labels:
+      io.deepseek-harness-container.volume-scope: restart-scoped-gateway

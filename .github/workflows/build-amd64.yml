@@ -74,6 +74,10 @@ jobs:
           test "$(docker image inspect "$IMAGE_TAG" --format '{{.Architecture}}')" = amd64
           docker run --rm "$IMAGE_TAG" --version
           bash tests/amd64-runtime.sh "$IMAGE_TAG"
+          DSH_IMAGE="$IMAGE_TAG" bash tests/rc2-regression.sh
+          bash tests/runtime-cve-reachability.sh
+          scripts/audit-loaded-runtime-cve.sh "$IMAGE_TAG" linux/amd64 \
+            "${RUNNER_TEMP}/runtime-cve-reachability.json" collect
           docker image inspect "$IMAGE_TAG" > "${RUNNER_TEMP}/dsh-image-inspect.json"
           docker version > "${RUNNER_TEMP}/docker-version.txt"
           docker buildx version > "${RUNNER_TEMP}/buildx-version.txt"
@@ -85,11 +89,11 @@ jobs:
         run: |
           docker pull --platform linux/amd64 "$HAPROXY_REF"
           SOURCE_IMAGE="$HAPROXY_REF" SOURCE_PLATFORM=linux/amd64 \
-            ARCHIVE_TAG="$HAPROXY_ARCHIVE_TAG" CLEAN_LOAD_REQUIRED=1 \
+            ARCHIVE_TAG="$HAPROXY_ARCHIVE_TAG" CLEAN_LOAD_REQUIRED=1 KEEP_ARCHIVE_TAG=1 \
             bash tests/offline-image-archive.sh
           docker pull --platform linux/amd64 "$CADDY_REF"
           SOURCE_IMAGE="$CADDY_REF" SOURCE_PLATFORM=linux/amd64 \
-            ARCHIVE_TAG="$CADDY_ARCHIVE_TAG" CLEAN_LOAD_REQUIRED=1 \
+            ARCHIVE_TAG="$CADDY_ARCHIVE_TAG" CLEAN_LOAD_REQUIRED=1 KEEP_ARCHIVE_TAG=1 \
             bash tests/offline-image-archive.sh
           CONTRACT_DSH_IMAGE="$IMAGE_TAG" \
             CONTRACT_PLATFORM=linux/amd64 \
@@ -126,6 +130,7 @@ jobs:
             "${RUNNER_TEMP}/disk-before.txt" \
             "${RUNNER_TEMP}/disk-after.txt" \
             "${RUNNER_TEMP}/docker-system-df-before.txt" \
+            "${RUNNER_TEMP}/runtime-cve-reachability.json" \
             "${RUNNER_TEMP}/bundle/"
           built_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)
           dsh_image_id=$(docker image inspect "$IMAGE_TAG" --format '{{.Id}}')
