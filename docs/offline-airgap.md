@@ -1,6 +1,6 @@
 # DSH 容器化离线部署 SOP（ARM64）
 
-> 状态：DSH `0.1.1-rc.2` 的本机原生 AMD64 与 x86/QEMU ARM64 候选已通过 runtime、原生模块、Caddy/HAProxy Compose 与离线包校验；隔离的本机 AMD64 测试实例已升级到 rc.2。GitHub 原生 rc.2、生产 ARM 断网验收、保留的 SBOM/provenance、漏洞处置、签名和镜像发布仍未完成，因此当前仍不是可直接投产的发布镜像。
+> 状态：DSH `0.1.1-rc.2` 的本机原生 AMD64、x86/QEMU ARM64 与 GitHub 原生 AMD64/ARM64 候选均已通过各自的 runtime、原生模块、网关与离线包门禁；隔离的本机 AMD64 测试实例已升级到 rc.2。生产 ARM 断网验收、保留的 SBOM/provenance、漏洞处置、签名和镜像发布仍未完成，因此当前仍不是可直接投产的发布镜像。
 
 本文记录 deepseek-harness-container 的目标交付边界：在一台没有外网、没有域名的 Linux ARM64 内网主机上，用 Docker Compose 启动 DSH 和 Caddy，并由内网客户端通过 HTTPS 访问。宿主机 systemd 安装是另一个产品和验收记录，不与本方案混用。
 

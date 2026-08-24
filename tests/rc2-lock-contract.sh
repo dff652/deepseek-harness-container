@@ -63,6 +63,26 @@ assert all(policy["output"].get(key) for key in (
 assert policy["output"]["sbomSha256"] is None
 assert policy["output"]["provenanceSha256"] is None
 
+native_runs = {
+    "native-amd64-lock.json": ("linux/amd64", "32699950087"),
+    "native-arm64-lock.json": ("linux/arm64", "32699954057"),
+}
+for relative, (target, run_id) in native_runs.items():
+    native = json.loads((root / "policy" / relative).read_text())
+    assert native["status"] == "native-github-candidate-built-not-released"
+    assert native["target"] == target
+    assert native["application"] == policy["application"]
+    assert native["output"]["sourceCommit"] == "f69966b43bd29558ca72a03b7435e3f7be10a362"
+    assert native["output"]["githubRunId"] == run_id
+    assert all(native["output"].get(key) for key in (
+        "builtAt", "imageId", "manifestDigest", "configDigest",
+        "dshArchiveSha256", "caddyImageId", "caddyArchiveSha256",
+    ))
+    assert native["output"]["sbomSha256"] is None
+    assert native["output"]["provenanceSha256"] is None
+    assert "binfmt" not in native["images"]
+    assert "arm64Probe" not in native["images"]
+
 expected_images = {
     ".env.example": "DSH_IMAGE=local/dsh:0.1.1-rc.2-arm64",
     ".env.amd64.example": "DSH_IMAGE=local/dsh:0.1.1-rc.2-amd64",
@@ -74,4 +94,4 @@ for relative, expected in expected_images.items():
     assert image_lines == [expected], {relative: image_lines}
 PY
 
-printf 'PASS: rc.2 npm closure, release-age exclusions, environment examples and QEMU evidence lock are coherent\n'
+printf 'PASS: rc.2 npm closure, release-age exclusions, environment examples and local/native evidence locks are coherent\n'

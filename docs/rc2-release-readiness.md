@@ -2,8 +2,8 @@
 
 ## Decision
 
-`0.1.1-rc.2` is accepted as a **local candidate**, not as a published image or
-production ARM release. The default appliance remains DSH plus Caddy. HAProxy
+`0.1.1-rc.2` is accepted as a **multi-environment candidate**, not as a
+published image or production ARM release. The default appliance remains DSH plus Caddy. HAProxy
 remains an isolated alternative profile: its smaller current vulnerability
 count is useful evidence, but does not by itself satisfy the gateway adoption,
 license, provenance, real-ARM or publication gates.
@@ -59,6 +59,22 @@ An isolated local AMD64 appliance was upgraded from rc.1 to rc.2 on HTTPS port
 read-only; the container publishes no 3080 port, and the separately managed
 host systemd DSH listeners on 3080 remained unchanged.
 
+## GitHub-native build evidence
+
+Both non-publishing workflows rebuilt reviewed source
+`f69966b43bd29558ca72a03b7435e3f7be10a362` and completed successfully:
+
+| Platform | Run | DSH manifest | Config | Result |
+| --- | --- | --- | --- | --- |
+| `linux/amd64` | [`32699950087`](https://github.com/dff652/deepseek-harness-container/actions/runs/32699950087) | `sha256:d80245b15454ce94df63d801e6f2de35133c774161d8638bcca6699d328adc9f` | `sha256:0b632905a4a2bb5a86e58f84abed9891cfa99090635fcab4a6ad2e561d6ab186` | PASS |
+| `linux/arm64` | [`32699954057`](https://github.com/dff652/deepseek-harness-container/actions/runs/32699954057) | `sha256:db3a84886b3ae347b2ccc8c928aec99bb00189d4e13f45ab8d221af604d4ed88` | `sha256:e96694dff68458784a6391d0ce3e91458e1cc264a610e7c82142a18ea019a55c` | PASS |
+
+All downloaded `SHA256SUMS` entries passed (18 AMD64 and 17 ARM64). The
+candidate locks, source/run IDs, platforms, manifest/config blobs and packaged
+environment-to-archive RepoTags were independently recomputed. The committed
+native locks deliberately retain null SBOM/provenance fields; these build-only
+runs are not publication-policy evidence.
+
 ## Same-snapshot vulnerability evidence
 
 Syft `1.51.0` and Grype `0.117.0` with database build
@@ -107,7 +123,6 @@ image/Files flows, permission UI semantics, rollback, load pressure or real ARM.
 
 Publication stays fail-closed until all of the following are true:
 
-- native GitHub AMD64 and ARM64 rc.2 builds complete from one reviewed commit;
 - a disconnected real ARM64 host passes import, cold start, browser login,
   model/MCP, workspace, image/Files, restart and rollback acceptance;
 - exact DSH and selected-gateway SBOM, scan, license and provenance evidence is

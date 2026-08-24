@@ -146,9 +146,13 @@ changing the JSON severity list cannot weaken that invariant.
 The current source pins DSH `0.1.1-rc.2`. Local native AMD64 and x86/QEMU
 ARM64 builds passed runtime, native-module, bundle-hash and the Caddy/HAProxy
 gateway contracts. The exact local DSH manifests are `sha256:3cea6dff…`
-(AMD64) and `sha256:0c1fe2ec…` (ARM64). The repository's native GitHub locks
-and runs remain historical rc.1 evidence; native GitHub rc.2 builds have not
-yet run and must not be inferred from the local pair.
+(AMD64) and `sha256:0c1fe2ec…` (ARM64). Native GitHub rc.2 runs
+[32699950087](https://github.com/dff652/deepseek-harness-container/actions/runs/32699950087)
+and [32699954057](https://github.com/dff652/deepseek-harness-container/actions/runs/32699954057)
+also passed on source `f69966b…`; their downloaded locks, archives, platforms,
+manifest/config digests and environment-to-RepoTag mappings were independently
+verified. Their SBOM/provenance fields remain null, so these runs do not bypass
+the publication policy.
 
 A same-tool/database scan of both exact rc.2 architectures found four blocked
 DSH records and 35 blocked Caddy records per architecture. The comparable

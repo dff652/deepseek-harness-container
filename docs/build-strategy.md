@@ -141,9 +141,10 @@ ARM64 manifest/config are `sha256:0c1fe2ec…` / `sha256:c3511761…`. Both pass
 the network-disabled module/Web, request-image state, read-only-root,
 shell-absence and UID 10001 checks. The Caddy and isolated HAProxy Compose
 profiles also passed on native AMD64 and QEMU ARM64. A same-tool scan reports
-four DSH High/Critical matches on each architecture. Native GitHub rc.2 and all
-disconnected production-host acceptance still must run before release; no
-historical rc.1 GitHub run substitutes for them. See the
+four DSH High/Critical matches on each architecture. GitHub-native rc.2 runs
+`32699950087` (AMD64) and `32699954057` (ARM64) subsequently passed their
+source-specific build/runtime/bundle gates. All disconnected production-host
+acceptance still must run before release. See the
 [rc.2 readiness record](rc2-release-readiness.md) for exact evidence and open
 feature/supply-chain gates.
 
