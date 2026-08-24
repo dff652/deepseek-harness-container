@@ -30,6 +30,33 @@ AMD64 child 为 `sha256:98eb57d8…`。该目录是本机候选证据，不是�
 回滚和冷启动验收优先使用保留卷的整栈 recreate。该 AMD64 结果不替代真实
 ARM64 主机的断网、宿主重启、浏览器、模型和 MCP 验收。
 
+### 与正在使用的宿主 systemd DSH 并行验证
+
+宿主原生 DSH 的 `127.0.0.1:3080`（以及部署拥有的 LAN relay）与容器内
+`127.0.0.1:3080` 位于不同 network namespace，本身不会端口冲突，也不得为了
+测试容器而停止正在使用的宿主服务。只有宿主 HTTPS 监听端口已被占用，或需要
+明确区分候选入口时，才把容器的外部 HTTPS 端口改为例如 8443；容器内部 Caddy
+仍监听 443，容器 DSH 仍不发布 3080。
+
+部署环境必须同时固定端口与完整外部 authority。以下仅使用文档保留地址：
+
+```dotenv
+DSH_LAN_IP=192.0.2.10
+DSH_HTTPS_PORT=8443
+DSH_EXTERNAL_AUTHORITY=192.0.2.10:8443
+```
+
+此时浏览器入口是 `https://192.0.2.10:8443/`。Host 必须精确包含 8443，浏览器
+提供的 Origin 也必须精确为 `https://192.0.2.10:8443`；无端口或错误端口不能
+同时加入允许列表。若使用默认 443，则 authority 只写裸 IP。2026-08-24 本机
+AMD64 实测确认默认 443 与自定义 8443 均能返回认证后的 WebUI；8443 路径还通过
+无认证 401、正确认证 200、错误 Origin 403、错误 Host 421、可信 IP-SAN TLS 和
+容器 3080 未发布检查，宿主 systemd DSH 的进程、3080 listener 和 HTTP 200 在
+测试前后保持不变。同步重建的本机离线候选位于
+`artifacts/candidate-amd64.z2Tr4X/`，其 11 个 `SHA256SUMS` 成员全部通过；
+`SHA256SUMS` 文件自身摘要为 `sha256:3acc5769…`。该目录仍是本机候选证据，
+不是已发布制品。
+
 ## 1. 固定版本与证据边界
 
 候选版本必须使用完整、可复现的版本元数据：
@@ -55,7 +82,7 @@ GitHub 标签页面的 zip/tar.gz 是源码快照，不是可运行安装包；n
 ## 2. 目标拓扑
 
     内网客户端
-        │  https://<部署时的内网 IP>:443
+        │  https://<部署时的内网 IP>:<批准的 HTTPS 端口>
         ▼
     Caddy（与 DSH 共享 network namespace，仅入口和认证）
         │  127.0.0.1:3080
@@ -65,7 +92,7 @@ GitHub 标签页面的 zip/tar.gz 是源码快照，不是可运行安装包；n
         ├── /var/lib/dsh     DSH_HOME 持久卷
         └── provider/model   容器内 stdio 或受控内网 HTTP 端点
 
-DSH 不直接发布 3080，也不使用 host network。Compose 中 Caddy 使用 network_mode: service:dsh，因此 Caddy 能访问 DSH 的容器 loopback；由于共享 network namespace，宿主的 443 端口映射必须声明在拥有该 namespace 的 dsh 服务上，Caddy 服务本身不要再声明 ports。最终 Compose 必须由 docker compose config 解析，并由负例测试确认没有 3080、Docker socket、host network、privileged 或宽泛宿主挂载。
+DSH 不直接发布 3080，也不使用 host network。Compose 中 Caddy 使用 network_mode: service:dsh，因此 Caddy 能访问 DSH 的容器 loopback；由于共享 network namespace，宿主的批准 HTTPS 端口到容器 443 的映射必须声明在拥有该 namespace 的 dsh 服务上，Caddy 服务本身不要再声明 ports。最终 Compose 必须由 docker compose config 解析，并由负例测试确认没有 3080、Docker socket、host network、privileged 或宽泛宿主挂载。
 
 没有域名不是阻塞条件：Caddy 可以为部署时的内网 IP 使用 tls internal 签发内部证书，并用 `default_sni` 为不发送 SNI 的字面量 IP 客户端选择该证书。客户端必须导入并信任 Caddy 根 CA；根 CA 私钥只存放在目标机的受保护持久卷，不进入镜像或离线包。宿主 SSH 不能直接访问另一个 network namespace 内的容器 loopback。若只有单个管理员使用，可以用只发布到宿主 loopback 的、同 namespace 最小 relay 替代 Caddy，再通过 SSH 隧道访问；它仍是一个需要单独配置和验收的代理模式，不能靠普通 3080 端口映射直接连接 DSH。
 
@@ -84,7 +111,7 @@ DSH 不直接发布 3080，也不使用 host network。Compose 中 Caddy 使用 
 - uname -m 为 aarch64（不是 armv7l/32 位 ARM）；glibc 版本与构建验收环境兼容。若目标是 Alpine/musl，须另做 musl 构建和验收，不能复用本 SOP 的 glibc 包。
 - Docker Engine、Compose plugin、containerd、cgroup/iptables 或等价网络能力已在断网环境正常工作；具体 Docker 版本由部署基线固定并记录，不在本文使用浮动版本。
 - 宿主已预留镜像、容器日志、Caddy 数据卷、DSH_HOME 和工作区空间，且有稳定的静态内网 IP 或 DHCP 保留地址。真实 IP、路径、认证 hash 和模型凭据属于部署配置，不写入仓库；DSH 身份固定为 `10001:10001`，批准的工作区必须预先授予该身份。
-- 目标机允许客户端到 443/tcp，不允许客户端到 3080/tcp；不配置路由器端口转发。
+- 目标机只允许客户端到部署批准的 HTTPS 端口（默认 443，隔离候选可用 8443），不允许客户端直达容器 3080；不配置路由器端口转发。
 - 离线介质可以验证 SHA-256；生产管理员拥有导入镜像和启动 Compose 所需的最小 Docker 权限。
 
 若采用 rootless Docker，必须先在相同 rootless 网络、端口权限和重启策略下单独验收；不能仅因为 rootless 更安全就假设 443、Caddy 内部 CA 持久化或冷启动行为等价。
@@ -192,8 +219,9 @@ docker save 不保存卷、凭据、Caddy 内部 CA 私钥或 DSH 工作区。�
 
 解析结果必须确认：
 
-- 对外只发布 443；没有 3080:3080 或其他 DSH 端口映射。
-- Caddy 与 DSH 使用 network_mode: service:dsh（或同等已验收的共享 namespace）；Caddy 负责绑定 443，DSH 仍只绑定容器 loopback 127.0.0.1:3080。
+- 对外只发布环境文件批准的 HTTPS 端口到容器 443；没有 3080:3080 或其他 DSH 端口映射。
+- `DSH_EXTERNAL_AUTHORITY` 与 IP/端口精确一致：默认 443 使用裸 IP，非默认端口使用 `IP:port`。
+- Caddy 与 DSH 使用 network_mode: service:dsh（或同等已验收的共享 namespace）；Caddy 负责容器内 443，DSH 仍只绑定容器 loopback 127.0.0.1:3080。
 - 没有 network_mode: host、privileged: true、Docker socket、host /、/home、/root 挂载或 SYS_ADMIN/NET_ADMIN。
 - 运行用户、只读根文件系统、工作区和持久卷与部署清单一致。
 
@@ -214,9 +242,9 @@ docker save 不保存卷、凭据、Caddy 内部 CA 私钥或 DSH 工作区。�
 - Caddy 用批准 IP 的站点路由接收合法 Host，并用独立 HTTPS catch-all 对其他 Host 返回 421；在批准路由中拒绝显式 Sec-Fetch-Site: cross-site，并要求出现的 Origin 与外部 HTTPS authority 完全同源；Basic Auth 不能替代这组 DNS-rebinding/CSRF 防线。
 - 只有上述外部请求信任检查通过后，loopback adapter 才可把上游 Host 改为 127.0.0.1:3080，并移除已验证的外部 Origin/Fetch-Metadata 头。不得用全局删除请求头来绕过检查；确需原始同源头的插件路由必须单独配置和测试。
 - Caddy data/config 持久化，根 CA 私钥只在目标机受限目录；根证书通过受控介质分发到客户端信任库。
-- 宿主防火墙只允许管理的 LAN CIDR 到 443；从另一台内网设备验证 3080 不可达。
+- 宿主防火墙只允许管理的 LAN CIDR 到批准的 HTTPS 端口；从另一台内网设备验证容器没有发布 3080。与候选并行运行的宿主原生 DSH/relay 必须作为另一条已知入口单独记录，不能误算成容器端口。
 
-客户端首次访问 https://<实际内网 IP> 时，必须先确认导入的是该部署生成的根 CA，不能通过忽略证书错误来绕过验收。
+客户端首次访问 `https://<实际内网 IP>[:非默认端口]/` 时，必须先确认导入的是该部署生成的根 CA，不能通过忽略证书错误来绕过验收。
 
 单管理员的替代 profile 必须先在 DSH network namespace 中运行一个经过审查的 relay，将其非 loopback 监听端口只发布到宿主 `127.0.0.1`，再让 SSH local-forward 指向该宿主端口。它不需要 Caddy 的 PKI/Basic Auth 功能，但仍需要 relay、容器安全负例和 SSH 验收。不得把宿主 `127.0.0.1:3080` 直接等同于容器 `127.0.0.1:3080`。多客户端 Caddy 模式和单管理员 relay 模式的 Compose、端口与验收记录必须分开保存。
 
@@ -245,7 +273,7 @@ Agent 开发不需要让 DSH 容器暴露到互联网，也不应让 Agent 获�
 
 - [ ] 断开 DNS/registry/外网后，docker load、Compose 解析和 up -d --no-build --pull never 成功。
 - [ ] 冷启动/宿主重启后，DSH 和 Caddy 自动恢复；没有依赖人工联网拉层。
-- [ ] 宿主监听只有预期的 443；目标机 3080 不对 LAN 开放。
+- [ ] 容器只发布预期的 HTTPS 端口；容器 3080 不发布。若宿主原生 DSH 正在并行使用 3080，其进程、listener、访问策略和后续切换决定另行记录。
 - [ ] 未认证请求得到 401；导入正确根 CA 的授权客户端得到 HTTPS 200；错误/未信任证书不被忽略。
 - [ ] 即使携带有效 Basic Auth，恶意/不匹配 Origin、Sec-Fetch-Site: cross-site 和未批准 Host 仍在任何 loopback 头重写前被拒绝。
 - [ ] Compose 安全负例确认无 Docker socket、privileged、host network、宽泛宿主挂载和危险 capability。

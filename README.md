@@ -1,7 +1,7 @@
 # DeepSeek Harness Container
 
 <p align="center">
-  <img src="./assets/readme/hero.svg" width="100%" alt="DeepSeek Harness Container: an offline-first AMD64 and ARM64 appliance with Caddy HTTPS on port 443 and DSH restricted to container loopback">
+  <img src="./assets/readme/hero.svg" width="100%" alt="DeepSeek Harness Container: an offline-first AMD64 and ARM64 appliance with Caddy HTTPS and DSH restricted to container loopback">
 </p>
 
 Reproducible, offline-first container delivery for DeepSeek Harness on Linux
@@ -172,7 +172,9 @@ snapshot, and the remediation/exception boundary.
    own DSH source, plugin logic or provider business logic.
 2. Keep DSH on container loopback. The selected gateway sidecar joins the DSH
    network namespace with `network_mode: service:dsh`; only the selected host
-   IP on port 443 is published. Caddy remains the default; HAProxy is isolated.
+   IP and HTTPS port are published. The external port defaults to 443 and may
+   be changed for an isolated parallel candidate. Caddy remains the default;
+   HAProxy is isolated.
 3. Treat x86 Buildx/QEMU output as a candidate only. Production acceptance must
    run on a real ARM64 host with networking disconnected.
 4. Give an Agent explicit capabilities instead of “host escape”: one approved
@@ -186,7 +188,7 @@ snapshot, and the remediation/exception boundary.
 
 ```text
 managed LAN browser
-  -> https://ARM_IP:443 + Basic Auth + trusted local CA
+  -> https://ARM_IP:HTTPS_PORT + Basic Auth + trusted local CA
   -> Caddy sidecar
        network_mode: service:dsh
   -> DSH 127.0.0.1:3080

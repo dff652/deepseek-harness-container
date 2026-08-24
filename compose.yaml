@@ -57,7 +57,9 @@ services:
       - ${DSH_WORKSPACE:?set DSH_WORKSPACE to one approved absolute workspace}:/workspace:rw
     ports:
       # Caddy owns this shared network namespace; DSH does not publish 3080.
-      - "${DSH_LAN_IP:?set DSH_LAN_IP}:443:443/tcp"
+      # Keep the container listener at 443 while allowing a host-side port
+      # that can coexist with a native DSH service on the same machine.
+      - "${DSH_LAN_IP:?set DSH_LAN_IP}:${DSH_HTTPS_PORT:-443}:443/tcp"
     healthcheck:
       # Root 2xx is a transport readiness check only; DSH has no assumed
       # undocumented /health endpoint.
@@ -99,6 +101,10 @@ services:
       - /tmp:rw,noexec,nosuid,nodev,size=64m
     environment:
       DSH_LAN_IP: ${DSH_LAN_IP:?set DSH_LAN_IP}
+      # This is the exact browser-facing authority: IP for host port 443, or
+      # IP:port for any non-default host port. Caddy enforces it before auth
+      # and before changing headers for the loopback DSH upstream.
+      DSH_EXTERNAL_AUTHORITY: ${DSH_EXTERNAL_AUTHORITY:?set exact external HTTPS authority (IP or IP:port)}
       DSH_CADDY_USERNAME: ${DSH_CADDY_USERNAME:?set DSH_CADDY_USERNAME}
       DSH_CADDY_PASSWORD_HASH: ${DSH_CADDY_PASSWORD_HASH:?set bcrypt password hash}
     volumes:

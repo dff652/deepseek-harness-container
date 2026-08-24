@@ -31,7 +31,7 @@ credential stores or machine-specific paths into an image.
 ### Selected design
 
 ```text
-host ARM_IP:443
+host ARM_IP:HTTPS_PORT
       |
       v
 Docker-published port on the DSH network namespace
@@ -45,12 +45,14 @@ Docker-published port on the DSH network namespace
 ```
 
 Caddy uses `network_mode: service:dsh`. Both processes therefore see the same
-loopback, while the host publishes only port 443. At the external boundary,
-Caddy's approved-IP site is an outer `Host` matcher; a separate HTTPS catch-all
-returns 421 for every other Host. Within the approved route, Caddy rejects an
-explicit `Sec-Fetch-Site: cross-site` and requires any supplied `Origin` to
-equal the external HTTPS authority. Basic Auth identifies a caller but is not
-a CSRF or DNS-rebinding defense.
+loopback, while the host publishes only the approved HTTPS port (443 by
+default). The literal-IP site establishes the IP certificate identity; a TLS
+catch-all lets a non-default external port reach the same internal listener.
+Before authentication, their shared route compares the complete request
+host/port with `DSH_EXTERNAL_AUTHORITY` and returns 421 for any mismatch. It
+also rejects explicit `Sec-Fetch-Site: cross-site` and requires any supplied
+`Origin` to equal that exact external HTTPS authority. Basic Auth identifies a
+caller but is not a CSRF or DNS-rebinding defense.
 
 Only after that request-trust gate passes may the loopback adapter set the
 upstream `Host` authority and remove external `Origin`/Fetch-Metadata headers so
@@ -122,9 +124,10 @@ restart DSH, stop Caddy first, restart DSH, then run
 order. For upgrades and rollback, recreate the complete appliance while
 retaining the approved application and CA volumes.
 
-Binding `${DSH_LAN_IP}:443` is also a cold-start dependency. The static address
-must exist before Compose creates the service. A host startup unit must wait for
-`network-online.target`, verify the exact address and use bounded retries;
+Binding `${DSH_LAN_IP}:${DSH_HTTPS_PORT}` is also a cold-start dependency. The
+static address and selected port must be available before Compose creates the
+service. A host startup unit must wait for `network-online.target`, verify the
+exact address/port and use bounded retries;
 `restart: unless-stopped` alone does not recover a container that was never
 created because the bind address was absent.
 
@@ -199,13 +202,15 @@ services:
     pull_policy: never
     command: [web, --host, 127.0.0.1, --port, '3080', --no-open]
     ports:
-      - ${DSH_LAN_IP:?set DSH_LAN_IP}:443:443
+      - ${DSH_LAN_IP:?set DSH_LAN_IP}:${DSH_HTTPS_PORT:-443}:443
     read_only: true
     cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
 
   caddy:
     image: caddy:2.11.4@sha256:<locked OCI index digest>
+    environment:
+      DSH_EXTERNAL_AUTHORITY: ${DSH_EXTERNAL_AUTHORITY:?set exact IP or IP:port}
     pull_policy: never
     network_mode: service:dsh
     cap_drop: [ALL]

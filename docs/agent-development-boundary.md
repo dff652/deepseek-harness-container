@@ -22,7 +22,7 @@ digest、架构和验收证据。
 ```text
 受管浏览器
     |
-    | LAN_IP:443 / HTTPS / Caddy auth
+    | LAN_IP:HTTPS_PORT / HTTPS / Caddy auth
     v
 宿主 Docker published port
     |
@@ -277,8 +277,8 @@ Caddy CA 或卷数据。
    启动日志无下载、构建或浮动版本解析。
 3. `docker inspect` 证明 DSH 非 root、根文件系统只读、能力已裁剪、无
    privileged、无 host network、无 socket 和宽泛宿主挂载。
-4. 宿主只监听批准的 `LAN_IP:443`；宿主和 Docker published ports 中不存在
-   3080。
+4. 容器只发布批准的 `LAN_IP:HTTPS_PORT` 到 Caddy 443；Docker published
+   ports 中不存在 3080。并行的宿主原生 DSH/relay 属于独立入口与验收记录。
 5. 未认证 HTTPS 返回 401，认证后页面 2xx；客户端导入 Caddy 根 CA 后无证书
    错误；即使认证有效，错误 Host、恶意/不匹配 Origin、显式 cross-site
    Fetch Metadata 和直接 3080 请求仍失败。

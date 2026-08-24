@@ -12,18 +12,27 @@
 # The address is an environment-provided LAN IP, not a public DNS name. Caddy
 # issues a deployment-local certificate with tls internal; clients must import
 # the matching local CA instead of ignoring a browser warning.
-https://{$DSH_LAN_IP} {
-	tls internal
-
+#
+# The shared snippet is imported by both the literal-IP site and the TLS
+# catch-all. Caddy's site matcher treats a non-default Host port as a different
+# site, while Docker still maps that host port to the container's 443. Keeping
+# the catch-all behind the same exact authority gate allows :8443 without
+# accepting the bare IP, another port, or an arbitrary Host.
+(dsh_web) {
 	# Keep this route deliberately ordered. These external trust checks run
 	# before any upstream header adaptation and before Basic Auth.
 	route {
+		# Enforce the complete external Host authority separately from the site
+		# address because the host-side port may differ from internal 443.
+		@unapproved_host expression `{http.request.hostport} != "{$DSH_EXTERNAL_AUTHORITY}"`
+		respond @unapproved_host "unapproved Host" 421
+
 		@cross_site header Sec-Fetch-Site cross-site
 		respond @cross_site "cross-site request denied" 403
 
 		# An absent Origin is allowed for non-browser/legacy requests. If an
 		# Origin is supplied, it must be exactly the external HTTPS authority.
-		@bad_origin expression `{http.request.header.Origin} != "" && {http.request.header.Origin} != "https://{$DSH_LAN_IP}"`
+		@bad_origin expression `{http.request.header.Origin} != "" && {http.request.header.Origin} != "https://{$DSH_EXTERNAL_AUTHORITY}"`
 		respond @bad_origin "origin mismatch" 403
 
 		basic_auth {
@@ -40,9 +49,15 @@ https://{$DSH_LAN_IP} {
 	}
 }
 
-# A site address containing the approved IP becomes Caddy's outer Host
-# matcher. Requests with any other Host never enter that route, so this
-# catch-all must reject them explicitly instead of relying on an inner matcher.
+# The literal-IP site owns the normal 443 listener and gives Caddy an explicit
+# IP certificate identity. The catch-all also uses an internal CA so a custom
+# host port can complete TLS with the same IP SAN before the Host gate runs.
+https://{$DSH_LAN_IP} {
+	tls internal
+	import dsh_web
+}
+
 https:// {
-	respond "unapproved Host" 421
+	tls internal
+	import dsh_web
 }

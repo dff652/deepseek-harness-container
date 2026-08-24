@@ -10,6 +10,8 @@ mkdir -p -- "$tmp_dir/workspace"
 # used as production credentials or topology.
 export DSH_IMAGE='local/dsh:0.1.1-rc.1-arm64'
 export DSH_LAN_IP='192.0.2.10'
+unset DSH_HTTPS_PORT
+export DSH_EXTERNAL_AUTHORITY='192.0.2.10'
 export DSH_WORKSPACE="$tmp_dir/workspace"
 export DSH_CADDY_USERNAME='dsh-admin'
 export DSH_CADDY_PASSWORD_HASH='test-bcrypt-hash'
@@ -64,6 +66,7 @@ assert caddy["user"] == "1000:1000"
 assert caddy["cap_drop"] == ["ALL"]
 assert caddy["cap_add"] == ["NET_BIND_SERVICE"]
 assert caddy["security_opt"] == ["no-new-privileges:true"]
+assert caddy["environment"]["DSH_EXTERNAL_AUTHORITY"] == "192.0.2.10"
 assert caddy["depends_on"]["caddy-init"]["condition"] == "service_completed_successfully"
 assert caddy_init["image"] == caddy["image"]
 assert caddy_init["network_mode"] == "none"
@@ -92,6 +95,27 @@ for name, service in services.items():
     assert "latest" not in text.lower(), (name, text)
 
 print("PASS: Compose topology and security contract")
+PY
+
+export DSH_HTTPS_PORT='8443'
+export DSH_EXTERNAL_AUTHORITY='192.0.2.10:8443'
+custom_rendered="$tmp_dir/compose-custom-port.json"
+docker compose -f "$ROOT/compose.yaml" config --format json >"$custom_rendered"
+python3 - "$custom_rendered" <<'PY'
+import json
+import pathlib
+
+document = json.loads(pathlib.Path(__import__("sys").argv[1]).read_text())
+services = document["services"]
+dsh = services["dsh"]
+caddy = services["caddy"]
+port = dsh["ports"][0]
+assert port["host_ip"] == "192.0.2.10", port
+assert str(port["published"]) == "8443", port
+assert str(port["target"]) == "443", port
+assert caddy["environment"]["DSH_EXTERNAL_AUTHORITY"] == "192.0.2.10:8443"
+assert not any(str(p.get("published")) == "3080" for p in dsh["ports"])
+print("PASS: custom HTTPS port and exact authority contract")
 PY
 
 echo "PASS: rendered Compose contract"

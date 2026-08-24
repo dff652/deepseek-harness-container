@@ -41,9 +41,11 @@ syntax and Host-policy tests do not claim an accepted IPv6 literal profile.
 ## Implemented topology
 
 `compose.haproxy.yaml` keeps DSH at `127.0.0.1:3080`. HAProxy joins the DSH
-network namespace and owns only `${DSH_LAN_IP}:443`. A network-disabled,
-one-shot root initializer copies the deployment-owned mode-0600 configuration
-and PEM into a named volume as UID/GID 99 with mode 0440. The long-running
+network namespace and owns only the approved
+`${DSH_LAN_IP}:${DSH_HTTPS_PORT}` host entry while listening on container 443.
+A network-disabled, one-shot root initializer copies the deployment-owned
+mode-0600 configuration and PEM into a named volume as UID/GID 99 with mode
+0440. The long-running
 HAProxy process is UID/GID 99, has a read-only root filesystem and receives
 only `NET_BIND_SERVICE`; DSH remains UID/GID 10001 with no host-published 3080.
 

@@ -32,6 +32,8 @@ if [[ -n "$port_output" ]]; then
 fi
 
 grep -Fq 'network_mode: service:dsh' "$compose" || fail "Caddy does not share DSH network namespace"
+grep -Fq "\${DSH_HTTPS_PORT:-443}:443/tcp" "$compose" || fail "external HTTPS port is not explicit"
+grep -Fq "DSH_EXTERNAL_AUTHORITY: \${DSH_EXTERNAL_AUTHORITY:?set exact external HTTPS authority (IP or IP:port)}" "$compose" || fail "exact external authority is not fail-closed"
 grep -Fq 'condition: service_completed_successfully' "$compose" || fail "Caddy volume initializer is not a required one-shot dependency"
 grep -Fq -- '- CHOWN' "$compose" || fail "Caddy initializer lacks its sole required capability"
 grep -Fq 'caddy:2.11.4@sha256:1172d4213087d3fc30bafc7ff2c2896180eb0c41ff7f75f315568fb36cabdcba' "$compose" || fail "Caddy image is not pinned to the verified 2.11.4 ARM64 child digest"
@@ -42,20 +44,25 @@ grep -Fq 'skip_install_trust' "$caddyfile" || fail "Caddy may try to mutate its 
 # shellcheck disable=SC2016 # Caddy placeholder must remain literal.
 grep -Fq 'https://{$DSH_LAN_IP} {' "$caddyfile" || fail "approved IP site block missing"
 grep -Fq 'https:// {' "$caddyfile" || fail "unapproved Host catch-all site missing"
-grep -Fq 'respond "unapproved Host" 421' "$caddyfile" || fail "unapproved Host is not rejected"
+grep -Fq 'respond @unapproved_host "unapproved Host" 421' "$caddyfile" || fail "unapproved Host is not rejected"
 grep -Fq '@cross_site header Sec-Fetch-Site cross-site' "$caddyfile" || fail "cross-site Fetch Metadata gate missing"
 grep -Fq '@bad_origin expression' "$caddyfile" || fail "Origin equality gate missing"
+grep -Fq '@unapproved_host expression' "$caddyfile" || fail "exact Host/authority gate missing"
+grep -Fq "{http.request.hostport} != \"{\$DSH_EXTERNAL_AUTHORITY}\"" "$caddyfile" || fail "Host gate does not use the complete deployment authority"
+grep -Fq "https://{\$DSH_EXTERNAL_AUTHORITY}" "$caddyfile" || fail "Origin gate does not use the deployment authority"
 grep -Fq 'header_up Host 127.0.0.1:3080' "$caddyfile" || fail "loopback Host adapter missing"
 grep -Fq 'header_up -Origin' "$caddyfile" || fail "Origin removal is not explicit in loopback adapter"
 grep -Fq 'header_up -Sec-Fetch-Site' "$caddyfile" || fail "Fetch Metadata removal is not explicit in loopback adapter"
 
 cross_site_line=$(grep -n -m1 '@cross_site ' "$caddyfile" | cut -d: -f1)
 bad_origin_line=$(grep -n -m1 '@bad_origin expression' "$caddyfile" | cut -d: -f1)
+unapproved_host_line=$(grep -n -m1 '@unapproved_host expression' "$caddyfile" | cut -d: -f1)
 basic_auth_line=$(grep -n -m1 '^[[:space:]]*basic_auth[[:space:]]*{' "$caddyfile" | cut -d: -f1)
 header_up_line=$(grep -n -m1 'header_up Host' "$caddyfile" | cut -d: -f1)
 reverse_proxy_line=$(grep -n -m1 'reverse_proxy 127\.0\.0\.1:3080' "$caddyfile" | cut -d: -f1)
 [[ "$cross_site_line" -lt "$header_up_line" ]] || fail "Fetch Metadata gate occurs after upstream adaptation"
 [[ "$bad_origin_line" -lt "$header_up_line" ]] || fail "Origin gate occurs after upstream adaptation"
+[[ "$unapproved_host_line" -lt "$header_up_line" ]] || fail "Host gate occurs after upstream adaptation"
 [[ "$basic_auth_line" -lt "$reverse_proxy_line" ]] || fail "Basic Auth occurs after reverse proxy"
 
 # A global header deletion before the trust gate would turn the gate into a

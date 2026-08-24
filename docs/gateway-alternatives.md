@@ -29,13 +29,15 @@ keep the default Caddy path unchanged.
 Replacing Caddy means replacing all of its current responsibilities, not only
 the final `reverse_proxy` statement. A candidate must:
 
-- listen on the deployment-selected LAN IP and port 443 without a domain;
+- listen on the deployment-selected LAN IP and approved external HTTPS port
+  (443 by default) without a domain;
 - present an IP-SAN certificate to clients that omit SNI as well as clients
   that send the literal IP as SNI;
-- reject any Host other than the exact deployment IP with status 421;
+- reject any Host other than the exact deployment authority (`IP` or
+  `IP:non-default-port`) with status 421;
 - reject `Sec-Fetch-Site: cross-site` with status 403;
-- permit an absent `Origin`, but reject a supplied Origin unless it is exactly
-  `https://<deployment-IP>`;
+- permit an absent `Origin`, but reject a supplied Origin unless it exactly
+  matches the deployment authority and port;
 - require Basic Auth using a one-way password hash;
 - perform those external trust checks before rewriting any upstream header;
 - proxy only to DSH at `127.0.0.1:3080` in the shared network namespace;
