@@ -3,18 +3,19 @@
 ## Scope and decision
 
 The implementation review covers the complete local range
-`e3437c8aa3aa60afaeafa38877c25e5b508181b6..8fdf5ade33c34527c0b6d6aada293b638ec4a334`,
+`e3437c8aa3aa60afaeafa38877c25e5b508181b6..21b35ae39c685da4ffeee7fb428be68ed2b9c326`,
 not only the latest change:
 
 | Commit | Scope |
 | --- | --- |
 | `df210df94c2812a7bf356e62ca39d2a88e85500e` | rc.2 gateway regression and live runtime-CVE evidence hardening |
 | `8fdf5ade33c34527c0b6d6aada293b638ec4a334` | release-input ledger, read-only maintenance discovery and native ARM64 candidate pipeline |
+| `21b35ae39c685da4ffeee7fb428be68ed2b9c326` | strict release-version/integrity validation and direct DSH lockfile coherence |
 
 This record and its README index were added in `973d9f2`; any later doc-only
-correction is also part of the final `origin/main...HEAD` review even though it
-does not extend the implementation range above. Post-commit checks inspect the
-current HEAD and worktree rather than treating `8fdf5ad` as the branch tip.
+correction is also part of the final `origin/main...HEAD` review. Post-commit
+checks inspect the current HEAD and worktree rather than treating `8fdf5ad` as
+the branch tip.
 
 The source changes have no known code-level blocker for an owner-authorized
 push. A direct push to `main` does not start the current workflows: remote CI
@@ -25,8 +26,12 @@ acceptance gates below remain open.
 
 ## Review findings
 
-No unresolved correctness or security defect was found in the reviewed range.
-Review specifically checked the following boundaries:
+An independent negative review found that the initial ledger validator accepted
+floating aliases and malformed integrity strings, and did not directly compare
+the DSH package entry in `runtime/pnpm-lock.yaml` with the ledger. Commit
+`21b35ae` closes those gaps and adds regression cases. No unresolved correctness
+or security defect was found after that repair. Review specifically checked the
+following boundaries:
 
 - the release ledger rejects floating/prerelease references and detects exact
   tag/digest drift in Dockerfiles, workflows and committed locks, including
@@ -54,20 +59,25 @@ native and AMD64 workflow contracts, Docker Hub publication contract, rc.2 lock
 contract, runtime-CVE fixtures, release-input and native ARM64 contracts,
 HAProxy contract, ten supply-chain policy tests, Bash syntax, ShellCheck,
 Python compilation and workflow YAML parsing. All completed successfully and
-`git diff --check` was clean.
+`git diff --check` was clean. The release-input contract also proved that
+floating Node/pnpm/image aliases, non-version tool values, malformed npm and
+Corepack SHA512 values, and runtime lock-integrity drift are rejected.
 
-Dynamic image builds, Docker runtime suites and GitHub Actions were not rerun
-for this documentation review. The branch has not been pushed, so the new
-workflow revisions have no remote-CI run attached to this commit range.
+The independent verifier reran the local AMD64 runtime suite, rc.2 regression
+contracts, runtime-CVE collection and HAProxy contract successfully. No native
+ARM64 build or GitHub Actions run was produced for the current branch. The
+branch has not been pushed, so the new workflow revisions have no remote-CI run
+attached to this commit range.
 
 ## Open gates and rollback
 
 Publication remains blocked because the reviewed rc.2 DSH/Caddy images contain
 unresolved High/Critical scan records and the exception list is empty. Existing
 native GitHub run IDs predate the current workflow changes. The company-side
-ARM64 host also has not produced a candidate for commit `8fdf5ad…`: its fixed
-BuildKit pull timed out after 180 seconds, no approved builder/image was
-created, and the pinned Syft/Grype tools are not installed there.
+ARM64 host also has not produced a candidate for the current branch. Its earlier
+attempt against `8fdf5ad…` reached the fixed BuildKit pull, which timed out after
+180 seconds; no approved builder/image was created, and the pinned Syft/Grype
+tools are not installed there.
 
 The next accepted sequence is:
 
