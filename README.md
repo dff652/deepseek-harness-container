@@ -270,6 +270,7 @@ the immediate response to the current Caddy publication hold.
 - [Python SDK headless deployment evaluation](docs/python-sdk-evaluation.md)
 - [Security policy](SECURITY.md)
 - [Dual-architecture maintenance and publication](docs/release-maintenance.md)
+- [Unpushed container and ARM64 maintenance review (2026-09-03)](docs/unpushed-review-2026-09-03.md)
 - [Vulnerability triage and publication hold](docs/vulnerability-triage.md)
 - [Gateway alternatives and lightweight relay decision](docs/gateway-alternatives.md)
 - [HAProxy dual-architecture offline PoC](docs/haproxy-poc.md)
