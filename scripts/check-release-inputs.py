@@ -10,6 +10,8 @@ check after updating the consumers in the same change.
 from __future__ import annotations
 
 import argparse
+import base64
+import binascii
 import json
 import re
 import sys
@@ -20,6 +22,11 @@ from typing import Any
 DIGEST = re.compile(r"^sha256:[0-9a-f]{64}$")
 COMMIT = re.compile(r"^[0-9a-f]{40}$")
 UNSAFE_PRERELEASE = re.compile(r"(?:alpha|beta|nightly|dev|canary)", re.IGNORECASE)
+FLOATING_ALIAS = re.compile(
+    r"^(?:latest|stable|current|edge|main|master|head|rolling|next|lts)(?:$|[-_./])",
+    re.IGNORECASE,
+)
+STABLE_SEMVER = re.compile(r"^\d+\.\d+\.\d+$")
 IMAGE_REF = re.compile(r"^(?P<name>[^@\s]+)@(?P<digest>sha256:[0-9a-f]{64})$")
 PLATFORMS = ("linux/amd64", "linux/arm64")
 
@@ -79,6 +86,15 @@ def require_string(value: Any, label: str, errors: list[str]) -> str:
     return value
 
 
+def valid_sha512_sri(value: Any) -> bool:
+    if not isinstance(value, str) or not value.startswith("sha512-"):
+        return False
+    try:
+        return len(base64.b64decode(value.removeprefix("sha512-"), validate=True)) == 64
+    except (binascii.Error, ValueError):
+        return False
+
+
 def validate_image(
     name: str, image: dict[str, Any], errors: list[str], *, platforms: bool = True
 ) -> None:
@@ -89,6 +105,8 @@ def validate_image(
     tag = require_string(image.get("tag"), f"images.{name}.tag", errors)
     if tag and UNSAFE_PRERELEASE.search(tag):
         errors.append(f"images.{name}.tag cannot be an alpha/beta/nightly/dev/canary")
+    if tag and FLOATING_ALIAS.search(tag):
+        errors.append(f"images.{name}.tag cannot be a floating channel alias")
     index_digest = image.get("indexDigest")
     if not isinstance(index_digest, str) or not DIGEST.fullmatch(index_digest):
         errors.append(f"images.{name}.indexDigest must be an exact sha256 digest")
@@ -169,8 +187,8 @@ def validate_structure(document: Any, errors: list[str]) -> None:
     if not isinstance(commit, str) or not COMMIT.fullmatch(commit):
         errors.append("release.dsh.commit must be a 40-character lowercase commit")
     integrity = dsh.get("npmIntegrity")
-    if not isinstance(integrity, str) or not integrity.startswith("sha512-"):
-        errors.append("release.dsh.npmIntegrity must be a sha512 npm integrity value")
+    if not valid_sha512_sri(integrity):
+        errors.append("release.dsh.npmIntegrity must be a 64-byte sha512 SRI value")
 
     for component in ("node", "pnpm"):
         item = release.get(component)
@@ -178,13 +196,13 @@ def validate_structure(document: Any, errors: list[str]) -> None:
             errors.append(f"release.{component} must be an object")
         else:
             version = require_string(item.get("version"), f"release.{component}.version", errors)
-            if version and UNSAFE_PRERELEASE.search(version):
-                errors.append(f"release.{component}.version cannot be a prerelease")
+            if version and not STABLE_SEMVER.fullmatch(version):
+                errors.append(f"release.{component}.version must be a stable three-part version")
     pnpm = release.get("pnpm")
     if isinstance(pnpm, dict):
         integrity = pnpm.get("integrity")
-        if not isinstance(integrity, str) or not integrity.startswith("sha512."):
-            errors.append("release.pnpm.integrity must be a Corepack sha512 value")
+        if not isinstance(integrity, str) or not re.fullmatch(r"sha512\.[0-9a-f]{128}", integrity):
+            errors.append("release.pnpm.integrity must be a Corepack sha512 hash")
 
     images = document.get("images")
     if not isinstance(images, dict):
@@ -220,8 +238,8 @@ def validate_structure(document: Any, errors: list[str]) -> None:
                 errors.append(f"tools.{tool} must be an object")
                 continue
             version = require_string(item.get("version"), f"tools.{tool}.version", errors)
-            if version and UNSAFE_PRERELEASE.search(version):
-                errors.append(f"tools.{tool}.version cannot be a prerelease")
+            if version and not STABLE_SEMVER.fullmatch(version):
+                errors.append(f"tools.{tool}.version must be a stable three-part version")
             require_string(item.get("action"), f"tools.{tool}.action", errors)
             action_commit = item.get("actionCommit")
             if not isinstance(action_commit, str) or not COMMIT.fullmatch(action_commit):
@@ -311,6 +329,15 @@ def check_consumers(root: Path, document: dict[str, Any], errors: list[str]) -> 
             f'"@deepseek-ai/dsh": "{dsh["version"]}"',
             f'"packageManager": "pnpm@{pnpm["version"]}+{pnpm["integrity"]}"',
             f'"node": "{node_version}"',
+        ],
+        errors,
+    )
+    check_consumer(
+        root,
+        "runtime/pnpm-lock.yaml",
+        [
+            f"  '{dsh['package']}@{dsh['version']}':\n"
+            f"    resolution: {{integrity: {dsh['npmIntegrity']}}}",
         ],
         errors,
     )

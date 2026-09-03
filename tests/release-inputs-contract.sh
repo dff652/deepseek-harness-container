@@ -71,6 +71,32 @@ caddy_child_alpha["images"]["caddy"]["platforms"]["linux/arm64"]["ref"] = (
 (out / "caddy-child-alpha.json").write_text(
     json.dumps(caddy_child_alpha), encoding="utf-8"
 )
+
+node_current = json.loads(json.dumps(source))
+node_current["release"]["node"]["version"] = "current"
+(out / "node-current.json").write_text(json.dumps(node_current), encoding="utf-8")
+
+pnpm_stable = json.loads(json.dumps(source))
+pnpm_stable["release"]["pnpm"]["version"] = "stable"
+(out / "pnpm-stable.json").write_text(json.dumps(pnpm_stable), encoding="utf-8")
+
+caddy_stable = json.loads(json.dumps(source))
+caddy_stable["images"]["caddy"]["tag"] = "stable"
+for item in caddy_stable["images"]["caddy"]["platforms"].values():
+    item["ref"] = "caddy:stable@" + item["digest"]
+(out / "caddy-stable.json").write_text(json.dumps(caddy_stable), encoding="utf-8")
+
+tool_banana = json.loads(json.dumps(source))
+tool_banana["tools"]["syft"]["version"] = "banana"
+(out / "tool-banana.json").write_text(json.dumps(tool_banana), encoding="utf-8")
+
+bad_npm_integrity = json.loads(json.dumps(source))
+bad_npm_integrity["release"]["dsh"]["npmIntegrity"] = "sha512-x"
+(out / "bad-npm-integrity.json").write_text(json.dumps(bad_npm_integrity), encoding="utf-8")
+
+bad_pnpm_integrity = json.loads(json.dumps(source))
+bad_pnpm_integrity["release"]["pnpm"]["integrity"] = "sha512.x"
+(out / "bad-pnpm-integrity.json").write_text(json.dumps(bad_pnpm_integrity), encoding="utf-8")
 PY
 
 if python3 "$CHECKER" --validate-only --inputs "$test_tmp/alpha.json" >/dev/null 2>&1; then
@@ -90,6 +116,24 @@ if python3 "$CHECKER" --validate-only --inputs "$test_tmp/caddy-beta.json" >/dev
 fi
 if python3 "$UPDATER" --root "$ROOT" "$test_tmp/caddy-child-alpha.json" >/dev/null 2>&1; then
   fail 'Caddy alpha child ref was accepted under a stable top-level tag'
+fi
+if python3 "$CHECKER" --validate-only --inputs "$test_tmp/node-current.json" >/dev/null 2>&1; then
+  fail 'floating Node current version was accepted'
+fi
+if python3 "$CHECKER" --validate-only --inputs "$test_tmp/pnpm-stable.json" >/dev/null 2>&1; then
+  fail 'floating pnpm stable version was accepted'
+fi
+if python3 "$CHECKER" --validate-only --inputs "$test_tmp/caddy-stable.json" >/dev/null 2>&1; then
+  fail 'floating Caddy stable tag was accepted with immutable child digests'
+fi
+if python3 "$CHECKER" --validate-only --inputs "$test_tmp/tool-banana.json" >/dev/null 2>&1; then
+  fail 'non-version Syft value was accepted'
+fi
+if python3 "$CHECKER" --validate-only --inputs "$test_tmp/bad-npm-integrity.json" >/dev/null 2>&1; then
+  fail 'malformed npm sha512 SRI was accepted'
+fi
+if python3 "$CHECKER" --validate-only --inputs "$test_tmp/bad-pnpm-integrity.json" >/dev/null 2>&1; then
+  fail 'malformed Corepack sha512 hash was accepted'
 fi
 
 python3 - "$ROOT" "$test_tmp" <<'PY'
@@ -124,6 +168,18 @@ for name, (lock_name, key, replacement) in variants.items():
     lock = json.loads(lock_path.read_text())
     lock["images"][key] = replacement
     lock_path.write_text(json.dumps(lock), encoding="utf-8")
+
+destination = output / "root-dsh-lock-integrity"
+shutil.copytree(source, destination, ignore=shutil.ignore_patterns(".git", "artifacts"))
+lock_path = destination / "runtime/pnpm-lock.yaml"
+lock_text = lock_path.read_text(encoding="utf-8")
+expected = (
+    "  '@deepseek-ai/dsh@0.1.1-rc.2':\n"
+    "    resolution: {integrity: sha512-UP1UIh6q3Gme/yXRn/QL2P8IsVlv8Shpg22TRJIZPsCRWLm4CBiA1MUvXmJAfsOEETBMLAl+xWPtFw6ICsN3wg==}"
+)
+replacement = expected.replace("UP1UI", "VP1UI", 1)
+assert lock_text.count(expected) == 1
+lock_path.write_text(lock_text.replace(expected, replacement, 1), encoding="utf-8")
 PY
 if python3 "$test_tmp/root-digest/scripts/check-release-inputs.py" \
   --root "$test_tmp/root-digest" >/dev/null 2>&1; then
@@ -140,6 +196,10 @@ fi
 if python3 "$test_tmp/root-digest-only/scripts/check-release-inputs.py" \
   --root "$test_tmp/root-digest-only" >/dev/null 2>&1; then
   fail 'native ARM64 lock lost its required Caddy tag with the expected digest'
+fi
+if python3 "$test_tmp/root-dsh-lock-integrity/scripts/check-release-inputs.py" \
+  --root "$test_tmp/root-dsh-lock-integrity" >/dev/null 2>&1; then
+  fail 'runtime DSH lock integrity drift was accepted'
 fi
 
 test "$(sha256sum "$ROOT/policy/release-inputs.json" | cut -d' ' -f1)" = "$source_digest" ||
