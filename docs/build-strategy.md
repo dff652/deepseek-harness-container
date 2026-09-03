@@ -16,9 +16,11 @@ modules are deployment evidence and must be tested on the real host.
 ## External native ARM64 build host
 
 An external `aarch64`/glibc Docker host may provide an additional native
-candidate build. Run:
+candidate build. Complete the [native ARM64 build-host SOP](native-arm64-build-sop.md),
+then run the read-only preflight and build:
 
 ```sh
+./scripts/preflight-native-arm64-host.sh
 ./scripts/build-native-arm64-candidate.sh
 ```
 

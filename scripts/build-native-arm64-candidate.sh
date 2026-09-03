@@ -11,6 +11,7 @@ readonly INPUTS="$REPO_ROOT/policy/release-inputs.json"
 readonly ARTIFACT_ROOT=${DSH_NATIVE_ARTIFACT_ROOT:-$REPO_ROOT/artifacts}
 readonly BUILDER_NAME=${DSH_NATIVE_BUILDER_NAME:-dsh-native-arm64}
 readonly KEEP_BUILDER=${DSH_NATIVE_KEEP_BUILDER:-0}
+readonly POLICY_MODE=${DSH_NATIVE_POLICY_MODE:-gate}
 readonly STEP_TIMEOUT_SECONDS=${DSH_NATIVE_STEP_TIMEOUT_SECONDS:-7200}
 readonly NETWORK_TIMEOUT_SECONDS=${DSH_NATIVE_NETWORK_TIMEOUT_SECONDS:-300}
 readonly VERIFIED_SOURCE_COMMIT=${DSH_NATIVE_VERIFIED_SOURCE_COMMIT:-}
@@ -33,6 +34,7 @@ Environment:
   DSH_NATIVE_ARTIFACT_ROOT  output parent (default: ./artifacts)
   DSH_NATIVE_BUILDER_NAME   dedicated Buildx builder name
   DSH_NATIVE_KEEP_BUILDER   set to 1 to retain a builder created by this run
+  DSH_NATIVE_POLICY_MODE    gate (default) or collect blocked non-release evidence
   DSH_NATIVE_STEP_TIMEOUT_SECONDS     build/gate timeout (default: 7200)
   DSH_NATIVE_NETWORK_TIMEOUT_SECONDS  bootstrap/pull timeout (default: 300)
 
@@ -53,6 +55,7 @@ case "$BUILDER_NAME" in
   ''|*[!A-Za-z0-9_.-]*) fail 'DSH_NATIVE_BUILDER_NAME contains unsafe characters' ;;
 esac
 case "$KEEP_BUILDER" in 0|1) ;; *) fail 'DSH_NATIVE_KEEP_BUILDER must be 0 or 1' ;; esac
+case "$POLICY_MODE" in gate|collect) ;; *) fail 'DSH_NATIVE_POLICY_MODE must be gate or collect' ;; esac
 [[ "$STEP_TIMEOUT_SECONDS" =~ ^[1-9][0-9]{1,4}$ ]] ||
   fail 'DSH_NATIVE_STEP_TIMEOUT_SECONDS must be an integer from 10 to 99999'
 ((STEP_TIMEOUT_SECONDS >= 10)) || fail 'DSH_NATIVE_STEP_TIMEOUT_SECONDS must be at least 10'
@@ -133,6 +136,9 @@ cleanup() {
       echo "FAIL: refusing to remove a changed or unowned builder $BUILDER_NAME" >&2
       status=2
     fi
+  fi
+  if ((status != 0)); then
+    printf 'FAILED: partial native ARM64 evidence retained at %s\n' "$ARTIFACT_DIR" >&2
   fi
   trap - EXIT
   exit "$status"
@@ -288,8 +294,23 @@ jq '{
   > "$ARTIFACT_DIR/haproxy-vulnerability-summary.json"
 haproxy_blocked=$(jq -er '.blockedFindingCount' \
   "$ARTIFACT_DIR/haproxy-vulnerability-summary.json")
-((supply_chain_status == 0)) || fail 'DSH/Caddy supply-chain policy rejected the candidate'
-((haproxy_blocked == 0)) || fail "HAProxy scan contains $haproxy_blocked High/Critical findings"
+policy_blocked=0
+if ((supply_chain_status != 0)); then
+  if [[ "$POLICY_MODE" == collect ]] && jq -e '
+    .status == "fail"
+    and (.errors | length > 0)
+    and ([.errors[] | startswith("vulnerability: unapproved ")] | all)
+  ' "$ARTIFACT_DIR/supply-chain-policy-summary.json" >/dev/null; then
+    policy_blocked=1
+  else
+    fail 'DSH/Caddy supply-chain policy rejected the candidate'
+  fi
+fi
+if ((haproxy_blocked != 0)); then
+  [[ "$POLICY_MODE" == collect ]] ||
+    fail "HAProxy scan contains $haproxy_blocked High/Critical findings"
+  policy_blocked=1
+fi
 
 # HAProxy remains an isolated non-publishing alternative, but its complete
 # direct and Compose contracts are part of the candidate gateway evidence.
@@ -327,6 +348,11 @@ fi
   fail 'built manifest digest is malformed'
 
 built_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+candidate_status='external-native-arm64-candidate-built-not-released'
+if ((policy_blocked != 0)); then
+  candidate_status='external-native-arm64-evidence-blocked-not-released'
+fi
+readonly candidate_status
 dsh_image_id=$(docker image inspect "$IMAGE_TAG" --format '{{.Id}}')
 caddy_image_id=$(docker image inspect "$CADDY_REF" --format '{{.Id}}')
 haproxy_image_id=$(docker image inspect "$HAPROXY_REF" --format '{{.Id}}')
@@ -344,6 +370,10 @@ jq \
   --arg sourceMode "$source_mode" \
   --arg sourceArchiveSha256 "$source_archive_sha256" \
   --arg builtAt "$built_at" \
+  --arg candidateStatus "$candidate_status" \
+  --arg policyMode "$POLICY_MODE" \
+  --argjson dshCaddyPolicyExitStatus "$supply_chain_status" \
+  --argjson haproxyBlockedFindingCount "$haproxy_blocked" \
   --arg imageTag "$IMAGE_TAG" \
   --arg imageId "$dsh_image_id" \
   --arg manifestDigest "$manifest_digest" \
@@ -370,7 +400,7 @@ jq \
   --arg caddyArchive "$CADDY_ARCHIVE_NAME" \
   --arg haproxyArchive "$HAPROXY_ARCHIVE_NAME" \
   '.schemaVersion = 1
-   | .status = "external-native-arm64-candidate-built-not-released"
+   | .status = $candidateStatus
    | .target = "linux/arm64"
    | .source = {
        releaseInputs: "policy/release-inputs.json",
@@ -411,6 +441,9 @@ jq \
        }
      }
    | .supplyChain = {
+       policyMode: $policyMode,
+       dshCaddyPolicyExitStatus: $dshCaddyPolicyExitStatus,
+       haproxyBlockedFindingCount: $haproxyBlockedFindingCount,
        tools: {syftVersion: $syftVersion, grypeVersion: $grypeVersion},
        sbom: {
          dsh: {path: "dsh-sbom.syft.json", sha256: $dshSbomSha256},
@@ -458,4 +491,8 @@ printf '%s\n' \
     > SHA256SUMS
 )
 
-printf 'Native ARM64 candidate bundle written to %s\n' "$ARTIFACT_DIR"
+if ((policy_blocked != 0)); then
+  printf 'BLOCKED: complete non-release ARM64 evidence bundle written to %s\n' "$ARTIFACT_DIR"
+else
+  printf 'Native ARM64 candidate bundle written to %s\n' "$ARTIFACT_DIR"
+fi

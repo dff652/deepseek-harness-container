@@ -4,6 +4,7 @@ set -Eeuo pipefail
 ROOT=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)
 readonly ROOT
 readonly SCRIPT="$ROOT/scripts/build-native-arm64-candidate.sh"
+readonly PREFLIGHT_CONTRACT="$ROOT/tests/native-arm64-host-preflight-contract.sh"
 
 fail() {
   echo "FAIL: $*" >&2
@@ -11,6 +12,7 @@ fail() {
 }
 
 test -x "$SCRIPT" || fail 'native ARM64 candidate script is not executable'
+bash "$PREFLIGHT_CONTRACT"
 bash -n "$SCRIPT"
 command -v shellcheck >/dev/null || fail 'shellcheck is required'
 shellcheck -S error "$SCRIPT"
@@ -41,6 +43,9 @@ grep -Fq 'haproxy-sbom.syft.json' "$SCRIPT" || fail 'HAProxy SBOM evidence missi
 grep -Fq 'supply-chain-policy-summary.json' "$SCRIPT" || fail 'supply-chain policy gate missing'
 grep -Fq 'BUILDX_METADATA_PROVENANCE=max' "$SCRIPT" || fail 'BuildKit provenance metadata missing'
 grep -Fq 'external-native-arm64-candidate-built-not-released' "$SCRIPT" || fail 'candidate-only status missing'
+grep -Fq 'external-native-arm64-evidence-blocked-not-released' "$SCRIPT" || fail 'blocked evidence status missing'
+grep -Fq 'DSH_NATIVE_POLICY_MODE' "$SCRIPT" || fail 'explicit policy mode missing'
+grep -Fq 'startswith("vulnerability: unapproved ")' "$SCRIPT" || fail 'collect mode vulnerability-only boundary missing'
 grep -Fq 'docker buildx rm --force "$BUILDER_NAME"' "$SCRIPT" || fail 'owned builder cleanup missing'
 
 if grep -Eiq 'qemu|binfmt|docker[[:space:]]+(login|push)|--privileged' "$SCRIPT"; then

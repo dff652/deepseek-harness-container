@@ -152,6 +152,10 @@ The ARM64 paths remain separate evidence levels:
   CVE-evidence, gateway, offline-archive, SBOM, Grype and BuildKit provenance
   checks sequentially, and writes a checksummed environment-specific candidate
   bundle under `artifacts/`;
+- `scripts/preflight-native-arm64-host.sh` provides a read-only prerequisite
+  check for maintainers who pull the repository directly on that host; follow
+  the [native ARM64 build-host SOP](docs/native-arm64-build-sop.md) before the
+  first run;
 - the disconnected production-class ARM host performs final import, browser,
   model/MCP, restart and cold-boot acceptance.
 
