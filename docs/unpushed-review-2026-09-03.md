@@ -2,7 +2,7 @@
 
 ## Scope and decision
 
-This review covers the complete local range
+The implementation review covers the complete local range
 `e3437c8aa3aa60afaeafa38877c25e5b508181b6..8fdf5ade33c34527c0b6d6aada293b638ec4a334`,
 not only the latest change:
 
@@ -10,6 +10,11 @@ not only the latest change:
 | --- | --- |
 | `df210df94c2812a7bf356e62ca39d2a88e85500e` | rc.2 gateway regression and live runtime-CVE evidence hardening |
 | `8fdf5ade33c34527c0b6d6aada293b638ec4a334` | release-input ledger, read-only maintenance discovery and native ARM64 candidate pipeline |
+
+This record and its README index were added in `973d9f2`; any later doc-only
+correction is also part of the final `origin/main...HEAD` review even though it
+does not extend the implementation range above. Post-commit checks inspect the
+current HEAD and worktree rather than treating `8fdf5ad` as the branch tip.
 
 The source changes have no known code-level blocker for an owner-authorized
 push that starts remote CI. This is not approval to publish an image, sign a
