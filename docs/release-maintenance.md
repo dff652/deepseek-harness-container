@@ -14,11 +14,41 @@ security defaults. Architecture-specific files may select immutable Node and
 Caddy child manifests, Compose platform values and evidence locks; they must
 not fork application logic or loosen the security boundary.
 
+## Release input ledger and maintenance check
+
+[`policy/release-inputs.json`](../policy/release-inputs.json) is the single
+machine-readable review source for the DSH/Node/pnpm tuple, the Dockerfile
+frontend, the per-platform Node/Caddy/HAProxy child digests, BuildKit and the
+Syft/Grype/Gitleaks identities. Existing Dockerfiles, Compose files, scripts,
+workflows and evidence locks remain readable by humans; they are checked
+against this ledger so a partial version update fails closed.
+
+Run the read-only check before opening or approving a maintenance change:
+
+```sh
+python3 scripts/check-release-inputs.py
+```
+
+For a proposed ledger, use
+`python3 scripts/update-release-inputs.py path/to/proposal.json`. Without
+`--apply` it only validates the proposal. Applying a proposal is an explicit
+maintainer action and still requires updating every reported consumer followed
+by the normal checker. The helper has no npm/registry lookup, never accepts
+alpha/beta or floating image references, and refuses vulnerability exception
+data. The scheduled
+`.github/workflows/release-inputs-maintenance.yml` workflow only runs these
+read-only checks plus a weekly upstream signal capture: it retains the current
+DSH npm dist-tags and proves that every reviewed immutable image reference is
+still resolvable. It cannot rewrite the repository or publish an image. This is
+a discovery/drift alarm, not an automatic upgrade bot: selecting a version,
+updating child digests and preparing a proposal remain explicit owner review.
+
 ## Version update order
 
 For every DSH/Node/pnpm/Caddy update:
 
-1. Verify the upstream DSH tag, commit, npm integrity and source-vs-package
+1. Update and review `policy/release-inputs.json` with the upstream DSH tag,
+   commit, npm integrity and source-vs-package
    boundary.
 2. Regenerate and review the complete pnpm lock and allowed-build policy.
 3. Resolve exact Linux AMD64 and ARM64 child manifests for Node and Caddy.

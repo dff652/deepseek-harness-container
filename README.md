@@ -84,6 +84,16 @@ not changed by this scaffold. That existing DSH instance is a host/user-level
 Node/pnpm installation managed by user systemd; it is not running inside the
 Caddy container and is not converted to containers by creating this project.
 
+The machine-readable release input ledger is
+[`policy/release-inputs.json`](policy/release-inputs.json). It is the review
+source for the DSH, Node, pnpm, Caddy, HAProxy and BuildKit pins, both Linux
+child digests, and the Syft/Grype/Gitleaks tool identities. The read-only
+[`check-release-inputs.py`](scripts/check-release-inputs.py) command checks the
+ledger against its consumers and rejects floating references, alpha/beta
+inputs and unreviewed vulnerability exceptions. A proposed ledger can be
+validated with [`update-release-inputs.py`](scripts/update-release-inputs.py);
+it is never applied by CI and does not update consumers automatically.
+
 The candidate targets this exact tuple:
 
 | Component | Candidate pin | State |
@@ -136,8 +146,22 @@ The ARM64 paths remain separate evidence levels:
 - `scripts/build-candidate.sh` builds a local x86/QEMU ARM64 candidate;
 - `.github/workflows/build-arm64.yml` builds and smokes on native
   `ubuntu-24.04-arm`;
+- `scripts/build-native-arm64-candidate.sh` runs the same candidate gates on a
+  generic external native `aarch64` build host. It creates a dedicated
+  digest-pinned `docker-container` Buildx builder, runs the runtime, rc.2,
+  CVE-evidence, gateway, offline-archive, SBOM, Grype and BuildKit provenance
+  checks sequentially, and writes a checksummed environment-specific candidate
+  bundle under `artifacts/`;
 - the disconnected production-class ARM host performs final import, browser,
   model/MCP, restart and cold-boot acceptance.
+
+The external-host entrypoint has no company IP, hostname, SSH key or route
+assumption. Private runner orchestration (for example, a ProxyJump wrapper)
+must supply the checked-out source and invoke it with an authenticated,
+allowlisted argument vector. The output status remains
+`external-native-arm64-candidate-built-not-released`; it does not publish,
+sign or deploy an image. The exact ledger versions of Syft and Grype must
+already be installed on that host; the script never downloads tools at runtime.
 
 `scripts/prepare-local-builder.sh` changes host binfmt state and is required
 only when intentionally enabling the reviewed local QEMU builder. Inspect it

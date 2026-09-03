@@ -33,6 +33,9 @@ jobs:
 
       - name: Run static contracts
         run: |
+          python3 scripts/check-release-inputs.py
+          bash tests/release-inputs-contract.sh
+          bash tests/native-arm64-candidate-contract.sh
           bash tests/compose-contract.sh
           bash tests/negative-exposure.sh
           bash tests/native-workflow-contract.sh

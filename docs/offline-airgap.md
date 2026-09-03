@@ -4,6 +4,32 @@
 
 本文记录 deepseek-harness-container 的目标交付边界：在一台没有外网、没有域名的 Linux ARM64 内网主机上，用 Docker Compose 启动 DSH 和 Caddy，并由内网客户端通过 HTTPS 访问。宿主机 systemd 安装是另一个产品和验收记录，不与本方案混用。
 
+## 外部 ARM 构建机候选流程
+
+公司侧或其他受控环境的原生 ARM64 构建机只作为候选证据来源。公共仓库不
+记录其 IP、主机名、指纹、SSH key 或路由；私有 runner wrapper 负责通过已
+批准的跳板机提供 checkout，并以 allowlist argv 调用：
+
+```sh
+./scripts/build-native-arm64-candidate.sh
+```
+
+脚本读取 `policy/release-inputs.json` 的版本和双架构 digest，要求
+`uname -m=aarch64`，使用独立且 digest 固定的 `docker-container` Buildx
+builder，不安装 binfmt/模拟器。它按顺序执行静态、runtime、rc.2、运行时
+CVE 证据、网关、离线归档、实际镜像 SBOM/Grype 和 BuildKit provenance
+门禁，并在 `artifacts/` 写出带 `SHA256SUMS` 的环境特定候选包。Syft 与
+Grype 必须按 ledger 的精确版本预装，脚本不在运行时下载工具。输出状态是
+`external-native-arm64-candidate-built-not-released`，不包含发布、签名或
+生产部署授权；生成包仍必须在目标机完成断网导入、浏览器、模型/MCP、重启
+和冷启动验收。
+
+版本维护先运行 `python3 scripts/check-release-inputs.py`。拟议 ledger 使用
+`python3 scripts/update-release-inputs.py proposal.json` 做只读校验；只有
+维护者显式添加 `--apply` 才会替换 ledger，且仍需同步消费者并重新运行
+checker。CI 的定时维护工作流只检查一致性，不自动接受 alpha、浮动引用或
+漏洞例外。
+
 ## 2026-08-24 rc.2 本机候选复验
 
 本机生成了 `artifacts/candidate-amd64.8otTIG/` 和

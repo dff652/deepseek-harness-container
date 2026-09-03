@@ -1,0 +1,72 @@
+name: release-inputs-maintenance
+
+on:
+  pull_request:
+  schedule:
+    - cron: "17 3 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-inputs-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Check release input ledger and consumers
+        run: |
+          python3 scripts/check-release-inputs.py
+          bash tests/release-inputs-contract.sh
+          bash tests/native-arm64-candidate-contract.sh
+
+      - name: Verify the updater remains explicit and offline
+        run: |
+          python3 scripts/update-release-inputs.py --help
+          python3 scripts/check-release-inputs.py --validate-only
+          git diff --check
+
+      - name: Capture read-only upstream signals
+        if: github.event_name != 'pull_request'
+        run: |
+          set -Eeuo pipefail
+          mkdir -p maintenance-report
+          cp policy/release-inputs.json maintenance-report/reviewed-inputs.json
+          timeout --signal=TERM --kill-after=10s 60s \
+            npm view @deepseek-ai/dsh dist-tags --json \
+            > maintenance-report/dsh-dist-tags.json
+          jq -r '[
+            .images.nodeBuild.ref?,
+            .images.nodeBuild.platforms["linux/amd64"].ref,
+            .images.nodeBuild.platforms["linux/arm64"].ref,
+            .images.nodeRuntime.platforms["linux/amd64"].ref,
+            .images.nodeRuntime.platforms["linux/arm64"].ref,
+            .images.caddy.platforms["linux/amd64"].ref,
+            .images.caddy.platforms["linux/arm64"].ref,
+            .images.haproxy.platforms["linux/amd64"].ref,
+            .images.haproxy.platforms["linux/arm64"].ref,
+            .images.dockerfileFrontend.ref,
+            .images.buildkit.ref
+          ] | .[] | select(. != null)' policy/release-inputs.json |
+          while IFS= read -r ref; do
+            printf 'REF\t%s\n' "$ref" >> maintenance-report/image-availability.tsv
+            timeout --signal=TERM --kill-after=10s 90s \
+              docker buildx imagetools inspect --raw "$ref" |
+              sha256sum >> maintenance-report/image-availability.tsv
+          done
+
+      - name: Retain scheduled discovery evidence
+        if: always() && github.event_name != 'pull_request'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: release-inputs-maintenance-${{ github.run_id }}
+          path: maintenance-report/
+          if-no-files-found: error
+          retention-days: 14

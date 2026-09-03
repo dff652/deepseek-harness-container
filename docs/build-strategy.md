@@ -13,6 +13,41 @@ Neither of the first two levels is production acceptance. The target kernel,
 cgroup, storage, network readiness, Caddy PKI, workspace ownership and native
 modules are deployment evidence and must be tested on the real host.
 
+## External native ARM64 build host
+
+An external `aarch64`/glibc Docker host may provide an additional native
+candidate build. Run:
+
+```sh
+./scripts/build-native-arm64-candidate.sh
+```
+
+Registry/bootstrap operations default to a 300-second hard timeout and the
+image build to 7200 seconds. Maintainers may lower these with
+`DSH_NATIVE_NETWORK_TIMEOUT_SECONDS` and `DSH_NATIVE_STEP_TIMEOUT_SECONDS`;
+timeouts are failures, never permission to reuse incomplete evidence. The
+private forced-command runner may invoke the same script from a checksum- and
+commit-verified `git archive`; direct users must use a clean Git worktree.
+
+The entrypoint reads all versions and child digests from
+`policy/release-inputs.json`, requires `uname -m=aarch64`, and creates or
+verifies a dedicated digest-pinned `docker-container` Buildx builder. It does
+not install emulation handlers, assume a company route, or accept arbitrary
+remote shell text. A private runner wrapper is responsible for checkout,
+authenticated access and an allowlisted argument vector. Exact ledger versions
+of Syft and Grype are prerequisites; the entrypoint does not download tools.
+
+The gates run serially: static Compose/security contracts, native runtime and
+rc.2 package regressions, runtime-CVE evidence, exact Caddy/HAProxy archive
+clean-load checks, actual-image SBOM/Grype policy, BuildKit provenance, and the
+isolated gateway contracts. Each dynamic gate has an outer wall-clock timeout.
+The resulting directory under `artifacts/` contains the DSH/Caddy/HAProxy
+archives, SBOMs/scans, inspect/build evidence, candidate lock and `SHA256SUMS`. Its status is
+`external-native-arm64-candidate-built-not-released`; no registry publication,
+signature or production deployment is implied. A
+pre-existing builder is never removed; a builder created by the script is
+removed after the run unless `DSH_NATIVE_KEEP_BUILDER=1` is set.
+
 ## DSH installation boundary
 
 The upstream quick-start command is:

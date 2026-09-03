@@ -39,6 +39,9 @@ jobs:
         run: |
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
           test -z "$(git status --porcelain)"
+          python3 scripts/check-release-inputs.py
+          bash tests/release-inputs-contract.sh
+          bash tests/native-arm64-candidate-contract.sh
           bash tests/compose-contract.sh
           bash tests/negative-exposure.sh
           bash tests/dockerhub-workflow-contract.sh
