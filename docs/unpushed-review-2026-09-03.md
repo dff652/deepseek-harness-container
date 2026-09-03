@@ -33,8 +33,8 @@ the DSH package entry in `runtime/pnpm-lock.yaml` with the ledger. Commit
 or security defect was found after that repair. Review specifically checked the
 following boundaries:
 
-- the release ledger rejects floating/prerelease references and detects exact
-  tag/digest drift in Dockerfiles, workflows and committed locks, including
+- the release ledger rejects floating and unsafe prerelease references and
+  detects exact tag/digest drift in Dockerfiles, workflows and committed locks, including
   same-digest tag substitution;
 - scheduled maintenance has read-only repository permission and reports
   upstream signals without rewriting files or publishing images;
