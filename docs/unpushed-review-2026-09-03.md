@@ -17,7 +17,9 @@ does not extend the implementation range above. Post-commit checks inspect the
 current HEAD and worktree rather than treating `8fdf5ad` as the branch tip.
 
 The source changes have no known code-level blocker for an owner-authorized
-push that starts remote CI. This is not approval to publish an image, sign a
+push. A direct push to `main` does not start the current workflows: remote CI
+requires a pull request before merge or a separate `workflow_dispatch` after
+the source exists remotely. This is not approval to publish an image, sign a
 release or deploy the appliance. The candidate publication and real ARM64
 acceptance gates below remain open.
 
@@ -69,8 +71,9 @@ created, and the pinned Syft/Grype tools are not installed there.
 
 The next accepted sequence is:
 
-1. push the reviewed source only after separate owner authorization and let the
-   read-only/build-only workflows produce evidence;
+1. push the reviewed source only after separate owner authorization, then use
+   a pull request before merge or separately dispatch the read-only/build-only
+   workflows to produce evidence;
 2. deliver the pinned BuildKit, Syft and Grype inputs to the ARM64 host through
    an approved proxy, internal registry or checksummed offline transfer;
 3. pass forced-runner preflight, build the exact reviewed commit and export the
