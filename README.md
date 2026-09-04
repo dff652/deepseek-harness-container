@@ -8,6 +8,9 @@ Reproducible, offline-first container delivery for DeepSeek Harness on Linux
 AMD64 and ARM64, with an authenticated IP-only HTTPS entry and an explicit
 development capability boundary.
 
+Plugin administration uses the isolated, offline-only [plugin-admin
+SOP](./docs/plugin-management.md); the production runtime remains shell-less.
+
 ## Project status
 
 **DSH `0.1.1-rc.2` now has local native AMD64, local QEMU ARM64 and

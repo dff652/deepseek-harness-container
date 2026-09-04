@@ -1,0 +1,54 @@
+name: dsh-plugin-admin
+
+# One-shot, non-publishing administration profile. Build the plugin-admin
+# target from reviewed source and never combine this file with compose.yaml.
+services:
+  plugin-admin:
+    build:
+      context: .
+      target: plugin-admin
+    image: ${DSH_PLUGIN_ADMIN_IMAGE:-local/dsh-plugin-admin:0.1.1-rc.2}
+    pull_policy: never
+    platform: ${DSH_PLATFORM:-linux/arm64}
+    command:
+      - --profile
+      - ${PLUGIN_ADMIN_PROFILE:-headless}
+      - --action
+      - ${PLUGIN_ADMIN_ACTION:-list}
+    network_mode: none
+    user: "10001:10001"
+    init: true
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=64m
+    environment:
+      DSH_HOME: /var/lib/dsh
+      HOME: /var/lib/dsh
+      PLUGIN_ADMIN_HOME_VOLUME: ${DSH_PLUGIN_HOME_VOLUME:-dsh-plugin-admin-candidate-home}
+      PLUGIN_ADMIN_DUMP_CONFIG: ${PLUGIN_ADMIN_DUMP_CONFIG:-0}
+      NODE_ENV: production
+      PNPM_CONFIG_OFFLINE: "true"
+      PNPM_CONFIG_IGNORE_SCRIPTS: "true"
+      PNPM_CONFIG_STORE_DIR: /var/lib/dsh/.pnpm-store
+      # Only these non-secret provider settings may be forwarded for an
+      # explicit dump-config run. They are empty by default.
+      DSH_AIAH_COMMAND: ${DSH_AIAH_COMMAND:-}
+      DSH_AGENT_MAIL_COMMAND: ${DSH_AGENT_MAIL_COMMAND:-}
+      DSH_AGENT_MAIL_HOME: ${DSH_AGENT_MAIL_HOME:-}
+      DSH_AGENT_MAIL_ID: ${DSH_AGENT_MAIL_ID:-}
+      DSH_AGENT_MAIL_HUB_URL: ${DSH_AGENT_MAIL_HUB_URL:-}
+    volumes:
+      - plugin-admin-home:/var/lib/dsh
+      - ${DSH_PLUGIN_INPUTS:?set DSH_PLUGIN_INPUTS to a directory of reviewed .tgz files}:/inputs:ro
+      - ${DSH_PLUGIN_EVIDENCE:?set DSH_PLUGIN_EVIDENCE to a writable evidence directory}:/evidence:rw
+    restart: "no"
+
+volumes:
+  plugin-admin-home:
+    name: ${DSH_PLUGIN_HOME_VOLUME:-dsh-plugin-admin-candidate-home}
+    labels:
+      io.deepseek-harness-container.volume-scope: one-shot-plugin-admin-home

@@ -46,6 +46,40 @@ COPY runtime/pnpm-lock.yaml runtime/pnpm-workspace.yaml ./
 # Debian compiler fallback.
 RUN pnpm --config.trust-lockfile=true install --prod --frozen-lockfile --offline
 
+# One-shot plugin administration keeps the package manager and the exact DSH
+# dependency closure available for offline tarball installs. This target is
+# separate from, and is never copied into, the shell-less production runtime.
+FROM build AS plugin-admin
+
+LABEL org.opencontainers.image.title="DeepSeek Harness plugin administrator" \
+      org.opencontainers.image.version="0.1.1-rc.2" \
+      org.opencontainers.image.vendor="deepseek-harness-container"
+
+RUN groupadd --gid 10001 dsh \
+ && useradd --uid 10001 --gid 10001 --home-dir /var/lib/dsh \
+      --create-home --shell /usr/sbin/nologin dsh \
+ && install --directory --owner=10001 --group=10001 \
+      /var/lib/dsh /evidence /inputs /workspace \
+ && install --directory /opt/pnpm-bin \
+ && ln -s /opt/corepack/v1/pnpm/11.7.0/bin/pnpm.mjs /opt/pnpm-bin/pnpm \
+ && test "$(/opt/pnpm-bin/pnpm --version)" = "11.7.0"
+
+COPY --chown=10001:10001 scripts/plugin-admin.sh /usr/local/bin/plugin-admin.sh
+RUN chmod 0755 /usr/local/bin/plugin-admin.sh
+
+ENV NODE_ENV=production \
+    HOME=/var/lib/dsh \
+    DSH_HOME=/var/lib/dsh \
+    PNPM_CONFIG_OFFLINE=true \
+    PNPM_CONFIG_IGNORE_SCRIPTS=true \
+    PNPM_CONFIG_STORE_DIR=/var/lib/dsh/.pnpm-store \
+    PATH=/opt/pnpm-bin:/opt/dsh/runtime/node_modules/.bin:${PATH}
+
+WORKDIR /workspace
+USER 10001:10001
+STOPSIGNAL SIGTERM
+ENTRYPOINT ["/usr/local/bin/plugin-admin.sh"]
+
 FROM --platform=${TARGETPLATFORM} ${NODE_RUNTIME_REF} AS runtime
 
 LABEL org.opencontainers.image.title="DeepSeek Harness runtime" \
